@@ -777,16 +777,12 @@ tr:hover td{background:var(--bg)}
 // ============================================================
 // CONSTANTES
 // ============================================================
-const USER_ROLES = {
-  'socio@bidatx.com': { perfil: 'Sócio',    nome: 'Bruno' },
-  'op@bidatx.com':    { perfil: 'Operador', nome: 'Operador' }
-};
-
 const _sb = supabase.createClient(
   'https://pxcqyzbgfbwwkazmonzx.supabase.co',
   'sb_publishable_6QT2f_wCkTmpfoO_EEZlpA_BCcC8Fv8'
 );
 let _sbUser = null;
+let _bidatxUsers = [];
 
 const TIPO_BADGE = {
   'Previdenciário':'badge-prev','Fiscal':'badge-fisc','Ambos':'badge-ambos',
@@ -973,9 +969,16 @@ async function doLogin() {
     return;
   }
   _sbUser = data.user;
+  errEl.textContent = 'Verificando acesso...';
+  const { data: userRow } = await _sb.from('bidatx_users')
+    .select('nome, perfil, ativo').eq('email', _sbUser.email).maybeSingle();
+  if (!userRow || !userRow.ativo) {
+    await _sb.auth.signOut();
+    errEl.textContent = 'Acesso não autorizado.';
+    return;
+  }
   errEl.textContent = '';
-  const role = USER_ROLES[_sbUser.email] ?? { perfil: 'Operador', nome: _sbUser.email };
-  currentUser = { email: _sbUser.email, ...role };
+  currentUser = { email: _sbUser.email, nome: userRow.nome, perfil: userRow.perfil };
   await loadFromSupabase();
   loadAll();
   showApp();
@@ -2148,13 +2151,69 @@ function saveFuDias() {
   config.fuDias=v; fuDias=v; saveConfig(); showNotif('Configuração salva!');
 }
 
-function renderUsersConfig() {
-  const list=document.getElementById('cfg-users-list'); list.innerHTML='';
-  USERS.forEach(u => {
-    const d=document.createElement('div'); d.className='user-item';
-    d.innerHTML=`<div class="user-avatar">${u.nome.charAt(0)}</div><div class="user-info"><div class="user-name">${u.nome}</div><div class="user-email">${u.email}</div></div><span class="user-perfil ${u.perfil==='Operador'?'op':''}">${u.perfil}</span>`;
-    list.appendChild(d);
-  });
+async function renderUsersConfig() {
+  const list = document.getElementById('cfg-users-list');
+  list.innerHTML = '<div style="color:var(--text2);font-size:13px">Carregando...</div>';
+  const { data } = await _sb.from('bidatx_users').select('*').order('nome');
+  _bidatxUsers = data ?? [];
+  const isSocio = currentUser.perfil === 'Sócio';
+  let html = _bidatxUsers.map(u => `
+    <div class="user-item">
+      <div class="user-avatar" style="${!u.ativo?'opacity:.45':''}">${u.nome.charAt(0)}</div>
+      <div class="user-info">
+        <div class="user-name">${u.nome}${!u.ativo?' <span style="color:var(--text2);font-size:11px;font-weight:400">(inativo)</span>':''}</div>
+        <div class="user-email">${u.email}</div>
+      </div>
+      <span class="user-perfil ${u.perfil==='Operador'?'op':''}">${u.perfil}</span>
+      ${isSocio && u.email !== currentUser.email
+        ? `<button onclick="toggleUserAtivo('${u.email}',${!u.ativo})" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--white);font-size:12px;cursor:pointer;color:var(--text2)">${u.ativo?'Desativar':'Ativar'}</button>`
+        : ''}
+    </div>`).join('');
+  if (isSocio) {
+    html += `
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:10px">Adicionar Usuário</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end">
+        <div class="cfg-field" style="margin:0"><label>Nome</label><input type="text" id="new-user-nome" placeholder="Nome"></div>
+        <div class="cfg-field" style="margin:0"><label>E-mail</label><input type="email" id="new-user-email" placeholder="email@empresa.com"></div>
+        <div class="cfg-field" style="margin:0"><label>Senha</label><input type="password" id="new-user-senha" placeholder="senha"></div>
+        <div class="cfg-field" style="margin:0"><label>Perfil</label>
+          <select id="new-user-perfil" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px">
+            <option>Operador</option><option>Sócio</option>
+          </select>
+        </div>
+        <button class="btn-save" onclick="addBidatxUser()">Adicionar</button>
+      </div>
+      <div id="new-user-error" style="color:var(--red);font-size:12px;margin-top:6px"></div>
+    </div>`;
+  }
+  list.innerHTML = html;
+}
+
+async function addBidatxUser() {
+  const nome   = document.getElementById('new-user-nome').value.trim();
+  const email  = document.getElementById('new-user-email').value.trim();
+  const senha  = document.getElementById('new-user-senha').value;
+  const perfil = document.getElementById('new-user-perfil').value;
+  const errEl  = document.getElementById('new-user-error');
+  if (!nome || !email || !senha) { errEl.textContent = 'Preencha todos os campos.'; return; }
+  errEl.textContent = 'Criando...';
+  const { error: authErr } = await _sb.auth.signUp({ email, password: senha });
+  if (authErr) { errEl.textContent = authErr.message; return; }
+  const { error: dbErr } = await _sb.from('bidatx_users').insert({ email, nome, perfil, ativo: true });
+  if (dbErr) {
+    errEl.textContent = dbErr.code === '23505' ? 'Este e-mail já existe.' : dbErr.message;
+    return;
+  }
+  errEl.textContent = '';
+  showNotif('Usuário adicionado!');
+  await renderUsersConfig();
+}
+
+async function toggleUserAtivo(email, ativo) {
+  await _sb.from('bidatx_users').update({ ativo }).eq('email', email);
+  showNotif(ativo ? 'Usuário ativado' : 'Usuário desativado');
+  await renderUsersConfig();
 }
 
 // Processos e Etapas
@@ -2599,8 +2658,10 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
   const { data: { session } } = await _sb.auth.getSession();
   _sbUser = session?.user ?? null;
   if (!_sbUser) return;
-  const role = USER_ROLES[_sbUser.email] ?? { perfil: 'Operador', nome: _sbUser.email };
-  currentUser = { email: _sbUser.email, ...role };
+  const { data: userRow } = await _sb.from('bidatx_users')
+    .select('nome, perfil, ativo').eq('email', _sbUser.email).maybeSingle();
+  if (!userRow || !userRow.ativo) { await _sb.auth.signOut(); return; }
+  currentUser = { email: _sbUser.email, nome: userRow.nome, perfil: userRow.perfil };
   await loadFromSupabase();
   loadAll();
   showApp();
