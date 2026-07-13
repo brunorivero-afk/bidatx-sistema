@@ -1423,7 +1423,7 @@ function openNewOpp() {
   document.getElementById('opp-inner-tabs').style.display = 'none';
   document.getElementById('opp-edit-section').style.display = 'none';
   document.getElementById('opp-financeiro-section').style.display = 'none';
-  if (currentUser.perfil==='Sócio') {
+  if (currentUser.perfil==='Socio') {
     document.getElementById('opp-comissao-section').style.display = '';
     updateComResumo();
   } else {
@@ -1449,7 +1449,7 @@ function openOpp(id, startTab) {
   fillOppForm(opp);
   document.getElementById('opp-edit-section').style.display = '';
   document.getElementById('opp-financeiro-section').style.display = '';
-  if (currentUser.perfil==='Sócio') {
+  if (currentUser.perfil==='Socio') {
     document.getElementById('opp-comissao-section').style.display = '';
     updateComResumo();
   } else {
@@ -1556,7 +1556,7 @@ function populateExecutorSelect(selected) {
 }
 
 function onOrigemChange() {
-  if (currentUser.perfil!=='Sócio') return;
+  if (currentUser.perfil!=='Socio') return;
   const origemNome = document.getElementById('opp-origem').value;
   const canal = (config.canaisOrigem||[]).find(c=>c.nome===origemNome);
   if (!canal) return;
@@ -1636,7 +1636,7 @@ function saveOpp() {
     opp.notas=document.getElementById('opp-notas').value.trim();
     opp.executor=document.getElementById('opp-executor').value;
     opp.resultadoLevantamento=(document.getElementById('opp-resultado')||{}).value||'';
-    if (currentUser.perfil==='Sócio') {
+    if (currentUser.perfil==='Socio') {
       if(!opp.comissao) opp.comissao={};
       opp.comissao.beneficiario=document.getElementById('opp-com-ben').value.trim();
       opp.comissao.percentual=parseFloat(document.getElementById('opp-com-pct').value)||0;
@@ -1645,7 +1645,7 @@ function saveOpp() {
     showNotif('Cliente atualizado!');
   } else {
     const etapaId = getEtapasFor(tipo)[0]?.id || 1;
-    const comissaoNova = currentUser.perfil==='Sócio' ? {
+    const comissaoNova = currentUser.perfil==='Socio' ? {
       beneficiario: document.getElementById('opp-com-ben').value.trim(),
       percentual:   parseFloat(document.getElementById('opp-com-pct').value)||0,
       obs:          document.getElementById('opp-com-obs').value.trim()
@@ -2156,7 +2156,7 @@ async function renderUsersConfig() {
   list.innerHTML = '<div style="color:var(--text2);font-size:13px">Carregando...</div>';
   const { data } = await _sb.from('bidatx_users').select('*').order('nome');
   _bidatxUsers = data ?? [];
-  const isSocio = currentUser.perfil === 'Sócio';
+  const isSocio = currentUser.perfil === 'Socio';
   let html = _bidatxUsers.map(u => `
     <div class="user-item">
       <div class="user-avatar" style="${!u.ativo?'opacity:.45':''}">${u.nome.charAt(0)}</div>
