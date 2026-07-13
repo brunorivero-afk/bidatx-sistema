@@ -1000,8 +1000,8 @@ function showApp() {
   const app = document.getElementById('app-shell');
   app.classList.add('visible');
   document.getElementById('header-nome').textContent = currentUser.nome;
-  document.getElementById('header-perfil').textContent = '(' + currentUser.perfil + ')';
-  if (currentUser.perfil === 'Sócio') document.getElementById('nav-config').style.display = 'inline-flex';
+  document.getElementById('header-perfil').textContent = '(' + (currentUser.perfil==='Socio'?'Sócio':currentUser.perfil) + ')';
+  if (currentUser.perfil === 'Socio') document.getElementById('nav-config').style.display = 'inline-flex';
   updateInativosCount();
   showTab('clientes');
 }
@@ -2164,7 +2164,7 @@ async function renderUsersConfig() {
         <div class="user-name">${u.nome}${!u.ativo?' <span style="color:var(--text2);font-size:11px;font-weight:400">(inativo)</span>':''}</div>
         <div class="user-email">${u.email}</div>
       </div>
-      <span class="user-perfil ${u.perfil==='Operador'?'op':''}">${u.perfil}</span>
+      <span class="user-perfil ${u.perfil==='Operador'?'op':''}">${u.perfil==='Socio'?'Sócio':u.perfil}</span>
       ${isSocio && u.email !== currentUser.email
         ? `<button onclick="toggleUserAtivo('${u.email}',${!u.ativo})" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--white);font-size:12px;cursor:pointer;color:var(--text2)">${u.ativo?'Desativar':'Ativar'}</button>`
         : ''}
@@ -2179,7 +2179,7 @@ async function renderUsersConfig() {
         <div class="cfg-field" style="margin:0"><label>Senha</label><input type="password" id="new-user-senha" placeholder="senha"></div>
         <div class="cfg-field" style="margin:0"><label>Perfil</label>
           <select id="new-user-perfil" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px">
-            <option>Operador</option><option>Sócio</option>
+            <option value="Operador">Operador</option><option value="Socio">Sócio</option>
           </select>
         </div>
         <button class="btn-save" onclick="addBidatxUser()">Adicionar</button>
