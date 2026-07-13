@@ -380,6 +380,7 @@ tr:hover td{background:var(--bg)}
   .top-nav-tab{padding:5px 12px;font-size:12px}
 }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -776,10 +777,16 @@ tr:hover td{background:var(--bg)}
 // ============================================================
 // CONSTANTES
 // ============================================================
-const USERS = [
-  {email:'socio@bidatx.com', senha:'bidatx2026', perfil:'Sócio',    nome:'Bruno'},
-  {email:'op@bidatx.com',    senha:'op2026',     perfil:'Operador', nome:'Operador'}
-];
+const USER_ROLES = {
+  'socio@bidatx.com': { perfil: 'Sócio',    nome: 'Bruno' },
+  'op@bidatx.com':    { perfil: 'Operador', nome: 'Operador' }
+};
+
+const _sb = supabase.createClient(
+  'https://pxcqyzbgfbwwkazmonzx.supabase.co',
+  'sb_publishable_6QT2f_wCkTmpfoO_EEZlpA_BCcC8Fv8'
+);
+let _sbUser = null;
 
 const TIPO_BADGE = {
   'Previdenciário':'badge-prev','Fiscal':'badge-fisc','Ambos':'badge-ambos',
@@ -808,9 +815,13 @@ const openSubPanels = new Set();
 // ============================================================
 // INIT
 // ============================================================
-function init() {
-  const auth = ls('bidatx_auth');
-  if (auth) { currentUser = auth; loadAll(); showApp(); }
+async function loadFromSupabase() {
+  const { data } = await _sb.from('bidatx_data')
+    .select('config, opors').eq('id', 'bidatx').maybeSingle();
+  if (data) {
+    if (data.config) lsSave('bidatx_config', data.config);
+    if (data.opors)  lsSave('bidatx_opor',  data.opors);
+  }
 }
 
 function loadAll() {
@@ -844,8 +855,14 @@ function loadAll() {
   });
 }
 
-function saveConfig() { lsSave('bidatx_config', config); }
-function saveOpors()  { lsSave('bidatx_opor', opors); updateInativosCount(); }
+function _sbSave() {
+  if (!_sbUser) return;
+  _sb.from('bidatx_data')
+    .upsert({ id: 'bidatx', config, opors, updated_at: new Date().toISOString() })
+    .then(({ error }) => { if (error) console.warn('Supabase save error:', error); });
+}
+function saveConfig() { lsSave('bidatx_config', config); _sbSave(); }
+function saveOpors()  { lsSave('bidatx_opor', opors); updateInativosCount(); _sbSave(); }
 function ls(k)        { try { return JSON.parse(localStorage.getItem(k)); } catch(e){ return null; } }
 function lsSave(k,v)  { localStorage.setItem(k, JSON.stringify(v)); }
 
@@ -945,14 +962,21 @@ function getDefaultOpors() {
 // ============================================================
 // AUTH
 // ============================================================
-function doLogin() {
+async function doLogin() {
   const email = document.getElementById('login-email').value.trim();
   const senha = document.getElementById('login-senha').value;
-  const user = USERS.find(u => u.email===email && u.senha===senha);
-  if (!user) { document.getElementById('login-error').textContent='E-mail ou senha inválidos.'; return; }
-  document.getElementById('login-error').textContent = '';
-  currentUser = user;
-  lsSave('bidatx_auth', user);
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = 'Aguarde...';
+  const { data, error } = await _sb.auth.signInWithPassword({ email, password: senha });
+  if (error || !data.user) {
+    errEl.textContent = 'E-mail ou senha inválidos.';
+    return;
+  }
+  _sbUser = data.user;
+  errEl.textContent = '';
+  const role = USER_ROLES[_sbUser.email] ?? { perfil: 'Operador', nome: _sbUser.email };
+  currentUser = { email: _sbUser.email, ...role };
+  await loadFromSupabase();
   loadAll();
   showApp();
 }
@@ -960,9 +984,10 @@ function doLogin() {
 document.getElementById('login-senha').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
 document.getElementById('login-email').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('login-senha').focus(); });
 
-function doLogout() {
-  localStorage.removeItem('bidatx_auth');
+async function doLogout() {
+  await _sb.auth.signOut();
   currentUser = null;
+  _sbUser = null;
   document.getElementById('app-shell').classList.remove('visible');
   document.getElementById('login-screen').style.display = 'flex';
 }
@@ -2570,7 +2595,16 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
 // ============================================================
 // BOOT
 // ============================================================
-init();
+(async function() {
+  const { data: { session } } = await _sb.auth.getSession();
+  _sbUser = session?.user ?? null;
+  if (!_sbUser) return;
+  const role = USER_ROLES[_sbUser.email] ?? { perfil: 'Operador', nome: _sbUser.email };
+  currentUser = { email: _sbUser.email, ...role };
+  await loadFromSupabase();
+  loadAll();
+  showApp();
+})();
 </script>
 </body>
 </html>
