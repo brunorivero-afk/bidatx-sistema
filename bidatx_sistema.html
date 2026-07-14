@@ -67,6 +67,34 @@ input,textarea,select{font-family:inherit;font-size:14px}
 .tab-pane{display:none;height:calc(100vh - 102px - 36px);overflow:hidden}
 .tab-pane.active{display:flex;flex-direction:column}
 
+/* ===== DASHBOARD ===== */
+.dash-wrap{padding:20px;overflow-y:auto;height:100%}
+.dash-kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+@media(max-width:800px){.dash-kpi-row{grid-template-columns:1fr 1fr}.dash-row{grid-template-columns:1fr!important}}
+.dash-kpi{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:16px 18px;border-left:4px solid var(--border)}
+.dash-kpi.c-accent{border-left-color:var(--accent)}
+.dash-kpi.c-green{border-left-color:var(--green)}
+.dash-kpi.c-amber{border-left-color:var(--amber)}
+.dash-kpi.c-red{border-left-color:var(--red)}
+.dash-kpi-label{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.dash-kpi-val{font-size:26px;font-weight:800;color:var(--navy);line-height:1.1}
+.dash-kpi-sub{font-size:12px;color:var(--text2);margin-top:4px}
+.dash-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+.dash-card{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
+.dash-card-title{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.dash-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;font-size:12px}
+.dash-bar-label{width:140px;flex-shrink:0;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dash-bar-track{flex:1;height:16px;background:var(--bg);border-radius:4px;overflow:hidden}
+.dash-bar-fill{height:100%;border-radius:4px;transition:width .5s}
+.dash-bar-count{width:36px;text-align:right;color:var(--text2);font-weight:600;flex-shrink:0;font-size:11px}
+.dash-funnel-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:12px}
+.dash-funnel-label{width:180px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.dash-funnel-bar{flex:1;height:20px;background:var(--bg);border-radius:4px;overflow:hidden;display:flex}
+.df-ok{height:100%;background:var(--green);opacity:.75}
+.df-warn{height:100%;background:#f59e0b;opacity:.85}
+.df-dan{height:100%;background:var(--red);opacity:.75}
+.dash-funnel-count{width:24px;text-align:right;font-weight:700;color:var(--navy);flex-shrink:0;font-size:12px}
+
 /* ===== NOTIF ===== */
 .notif{position:fixed;bottom:50px;right:20px;padding:12px 20px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;display:none;max-width:320px}
 .notif.success{background:var(--green);color:#fff}
@@ -437,6 +465,7 @@ tr:hover td{background:var(--bg)}
   <nav class="top-nav">
     <button class="top-nav-tab active" id="nav-clientes" onclick="showTab('clientes')">Clientes</button>
     <button class="top-nav-tab" id="nav-funil" onclick="showTab('funil')">Pipeline</button>
+    <button class="top-nav-tab" id="nav-dash" onclick="showTab('dash')">Dashboard</button>
     <button class="top-nav-tab" id="nav-inativos" onclick="showTab('inativos')">Inativos</button>
     <button class="top-nav-tab" id="nav-config" style="display:none" onclick="showTab('config')">Config</button>
     <button class="top-nav-add" onclick="openNewOpp()">+ Novo Cliente</button>
@@ -488,6 +517,11 @@ tr:hover td{background:var(--bg)}
           <div class="pipe-cards-grid" id="pipe-cards-grid"></div>
         </div>
       </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="tab-pane" id="tab-dash">
+      <div class="dash-wrap" id="dash-wrap"></div>
     </div>
 
     <!-- INATIVOS -->
@@ -1063,6 +1097,7 @@ function showTab(tab) {
   if (tab==='clientes') renderClientes();
   if (tab==='inativos') renderInativos();
   if (tab==='config')   renderConfig();
+  if (tab==='dash')     renderDash();
 }
 
 // CONFIG sub-tabs
@@ -2292,6 +2327,189 @@ function updateWaEvento(i, evento, checked) {
   if (checked) { if (!config.notifWhatsapp[i].eventos.includes(evento)) config.notifWhatsapp[i].eventos.push(evento); }
   else { config.notifWhatsapp[i].eventos = config.notifWhatsapp[i].eventos.filter(e=>e!==evento); }
   saveConfig();
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+function renderDash() {
+  const wrap = document.getElementById('dash-wrap'); if(!wrap) return;
+  const ativos = opors.filter(o => o.status === 'ativo');
+  const inativos = opors.filter(o => o.status !== 'ativo');
+
+  // KPIs
+  const totalHonor = ativos.reduce((s,o) => s+(o.honorarios||0), 0);
+  const totalVal   = ativos.reduce((s,o) => s+(o.valorValidado||0), 0);
+  const sla = {ok:0, warn:0, danger:0};
+  ativos.forEach(o => { sla[getSlaStatus(o)]++; });
+  const semFu = ativos.filter(o => !o.followups||!o.followups.length).length;
+  const fudias = ativos.filter(o => {
+    const last = o.followups&&o.followups.length ? o.followups[o.followups.length-1] : null;
+    return last && daysDiff(last.data) >= fuDias;
+  }).length;
+
+  // Por tipo
+  const porTipo={}, tipoColors={'Previdenciário':'#1a56db','Fiscal':'#1a7a4a','Ambos':'#5b21b6','Consultoria':'#7c3aed','Transação Tributária':'#b91c1c'};
+  ativos.forEach(o=>{ porTipo[o.tipo||'?']=(porTipo[o.tipo||'?']||0)+1; });
+
+  // Por origem
+  const porOrigem={};
+  ativos.forEach(o=>{ const k=o.origem||'Sem origem'; porOrigem[k]=(porOrigem[k]||0)+1; });
+
+  // Por responsável
+  const porResp={};
+  ativos.forEach(o=>{ const k=o.responsavel||'?'; porResp[k]=(porResp[k]||0)+1; });
+
+  // Funil por etapa com SLA colorido
+  const etapaMap={};
+  ativos.forEach(o=>{
+    const ets=getEtapasFor(o.tipo);
+    const e=ets.find(et=>et.id===o.etapaId);
+    if(!e) return;
+    const k=`${e.id}__${e.nome}`;
+    if(!etapaMap[k]) etapaMap[k]={nome:e.nome,ok:0,warn:0,danger:0};
+    etapaMap[k][getSlaStatus(o)]++;
+  });
+  const etapaEntries=Object.values(etapaMap).sort((a,b)=>(b.ok+b.warn+b.danger)-(a.ok+a.warn+a.danger));
+  const maxEtapa=Math.max(...etapaEntries.map(e=>e.ok+e.warn+e.danger),1);
+
+  // Tempo médio por etapa
+  const tempoMap={};
+  ativos.forEach(o=>{
+    const ets=getEtapasFor(o.tipo);
+    const e=ets.find(et=>et.id===o.etapaId);
+    if(!e||!o.etapaEntrada||!o.etapaEntrada[o.etapaId]) return;
+    const d=daysDiff(o.etapaEntrada[o.etapaId]);
+    if(!tempoMap[e.nome]) tempoMap[e.nome]={sum:0,cnt:0,sla:e.sla};
+    tempoMap[e.nome].sum+=d; tempoMap[e.nome].cnt++;
+  });
+  const tempoEntries=Object.entries(tempoMap).sort((a,b)=>{
+    const avgA=Math.round(a[1].sum/a[1].cnt), avgB=Math.round(b[1].sum/b[1].cnt);
+    return (avgB/b[1].sla)-(avgA/a[1].sla);
+  });
+
+  // Trend últimos 30 dias
+  const now30=Date.now(), diasMap={};
+  for(let i=29;i>=0;i--){ diasMap[new Date(now30-i*86400000).toISOString().slice(0,10)]=0; }
+  opors.forEach(o=>(o.historico||[]).forEach(h=>{
+    if(h.tipo==='entrada'){ const k=(h.data||'').slice(0,10); if(k in diasMap) diasMap[k]++; }
+  }));
+  const trendVals=Object.values(diasMap), trendKeys=Object.keys(diasMap);
+  const maxTrend=Math.max(...trendVals,1);
+  const totalTrend=trendVals.reduce((s,v)=>s+v,0);
+  const BW=17, GAP=1;
+  const trendBars=trendVals.map((v,i)=>{
+    const h=Math.round(v/maxTrend*52)||0;
+    const tooltip=`${trendKeys[i]}: ${v}`;
+    return `<g title="${tooltip}">
+      <rect x="${i*(BW+GAP)}" y="${54-h}" width="${BW}" height="${h||2}" fill="${v?'var(--accent)':'var(--border)'}" rx="2"/>
+      ${v?`<text x="${i*(BW+GAP)+BW/2}" y="52" text-anchor="middle" font-size="8" fill="var(--accent)" font-weight="700">${v}</text>`:''}
+    </g>`;
+  }).join('');
+  const svgW=(BW+GAP)*30-GAP;
+
+  // Helpers
+  const bar=(items,colors,unit='')=>{
+    const max=Math.max(...Object.values(items),1);
+    return Object.entries(items).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
+      <div class="dash-bar-row">
+        <div class="dash-bar-label" title="${k}">${k}</div>
+        <div class="dash-bar-track"><div class="dash-bar-fill" style="width:${Math.round(v/max*100)}%;background:${colors?.[k]||'var(--accent)'}"></div></div>
+        <div class="dash-bar-count">${v}${unit}</div>
+      </div>`).join('');
+  };
+
+  const slaCls = sla.danger ? 'c-red' : sla.warn ? 'c-amber' : 'c-green';
+  const fuCls  = (semFu+fudias) ? 'c-amber' : 'c-green';
+
+  wrap.innerHTML = `
+    <h1 style="font-size:18px;font-weight:800;color:var(--navy);margin-bottom:18px">Dashboard</h1>
+
+    <div class="dash-kpi-row">
+      <div class="dash-kpi c-accent">
+        <div class="dash-kpi-label">Clientes Ativos</div>
+        <div class="dash-kpi-val">${ativos.length}</div>
+        <div class="dash-kpi-sub">${inativos.length} inativo${inativos.length!==1?'s':''}</div>
+      </div>
+      <div class="dash-kpi c-green">
+        <div class="dash-kpi-label">Honorários / Mês</div>
+        <div class="dash-kpi-val" style="font-size:20px">${fmtBRL(totalHonor)}</div>
+        <div class="dash-kpi-sub">${totalVal?'Validado: '+fmtBRL(totalVal):'Sem valores validados'}</div>
+      </div>
+      <div class="dash-kpi ${slaCls}">
+        <div class="dash-kpi-label">Status SLA</div>
+        <div class="dash-kpi-val">${sla.ok} <span style="font-size:13px;font-weight:500;color:var(--text2)">ok</span></div>
+        <div class="dash-kpi-sub">${sla.warn} em atenção · <span style="color:var(--red);font-weight:700">${sla.danger} vencido${sla.danger!==1?'s':''}</span></div>
+      </div>
+      <div class="dash-kpi ${fuCls}">
+        <div class="dash-kpi-label">Follow-ups</div>
+        <div class="dash-kpi-val">${semFu+fudias}</div>
+        <div class="dash-kpi-sub">${semFu} sem registro · ${fudias} atrasado${fudias!==1?'s':''}</div>
+      </div>
+    </div>
+
+    <div class="dash-card" style="margin-bottom:20px">
+      <div class="dash-card-title">
+        Funil por Etapa
+        <span style="font-size:11px;font-weight:400;color:var(--text2)">
+          <span style="color:var(--green)">■</span> no prazo &nbsp;
+          <span style="color:#f59e0b">■</span> atenção &nbsp;
+          <span style="color:var(--red)">■</span> vencido
+        </span>
+      </div>
+      ${etapaEntries.length ? etapaEntries.map(e=>{
+        const total=e.ok+e.warn+e.danger;
+        const wOk=e.ok/maxEtapa*100, wWarn=e.warn/maxEtapa*100, wDan=e.danger/maxEtapa*100;
+        return `<div class="dash-funnel-row">
+          <div class="dash-funnel-label" title="${e.nome}">${e.nome}</div>
+          <div class="dash-funnel-bar">
+            <div class="df-ok" style="width:${wOk}%"></div>
+            <div class="df-warn" style="width:${wWarn}%"></div>
+            <div class="df-dan" style="width:${wDan}%"></div>
+          </div>
+          <div class="dash-funnel-count">${total}</div>
+        </div>`;
+      }).join('') : '<p style="color:var(--text2);font-size:13px">Nenhum cliente ativo.</p>'}
+    </div>
+
+    <div class="dash-row">
+      <div class="dash-card">
+        <div class="dash-card-title">Por Tipo de Processo</div>
+        ${Object.keys(porTipo).length ? bar(porTipo,tipoColors) : '<p style="color:var(--text2);font-size:13px">Sem dados.</p>'}
+      </div>
+      <div class="dash-card">
+        <div class="dash-card-title">Por Canal de Origem</div>
+        ${Object.keys(porOrigem).length ? bar(porOrigem,null) : '<p style="color:var(--text2);font-size:13px">Sem dados.</p>'}
+      </div>
+    </div>
+
+    <div class="dash-row">
+      <div class="dash-card">
+        <div class="dash-card-title">Por Responsável</div>
+        ${Object.keys(porResp).length ? bar(porResp,null) : '<p style="color:var(--text2);font-size:13px">Sem dados.</p>'}
+      </div>
+      <div class="dash-card">
+        <div class="dash-card-title">Tempo Médio na Etapa Atual</div>
+        ${tempoEntries.length ? tempoEntries.map(([nome,v])=>{
+          const avg=Math.round(v.sum/v.cnt);
+          const pct=Math.min(avg/v.sla*100,100);
+          const col=avg>v.sla?'var(--red)':avg>v.sla*.75?'#f59e0b':'var(--green)';
+          return `<div class="dash-bar-row">
+            <div class="dash-bar-label" title="${nome}">${nome}</div>
+            <div class="dash-bar-track"><div class="dash-bar-fill" style="width:${pct}%;background:${col}"></div></div>
+            <div class="dash-bar-count">${avg}d</div>
+          </div>`;
+        }).join('') : '<p style="color:var(--text2);font-size:13px">Sem dados.</p>'}
+      </div>
+    </div>
+
+    <div class="dash-card" style="margin-bottom:20px">
+      <div class="dash-card-title">Novos Clientes — últimos 30 dias <span style="font-size:11px;font-weight:400;color:var(--text2)">(${totalTrend} total)</span></div>
+      <svg viewBox="0 0 ${svgW} 60" style="width:100%;height:68px;display:block">${trendBars}</svg>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text2);margin-top:2px">
+        <span>${trendKeys[0].slice(5)}</span><span>${trendKeys[14].slice(5)}</span><span>${trendKeys[29].slice(5)}</span>
+      </div>
+    </div>`;
 }
 
 function saveMeta() {
