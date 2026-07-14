@@ -148,6 +148,21 @@ input,textarea,select{font-family:inherit;font-size:14px}
 .step-done .card-sub-step-nome{text-decoration:line-through;color:var(--text2)}
 .step-active .card-sub-step-nome{color:var(--navy);font-weight:700}
 .step-pending .card-sub-step-nome{color:var(--text2)}
+.step-skip .card-sub-step-nome{text-decoration:line-through;color:#bbb;font-style:italic}
+.sub-dot.skip{background:#bbb}
+.card-sub-skip-btn{padding:2px 8px;background:none;border:1px solid var(--border);border-radius:4px;font-size:11px;color:var(--text2);cursor:pointer;flex-shrink:0}
+.card-sub-skip-btn:hover{border-color:var(--accent);color:var(--accent)}
+/* WA Config */
+.wa-notif-header{display:grid;grid-template-columns:110px 140px 1fr 32px;gap:8px;align-items:center;padding:4px 0;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid var(--border);margin-bottom:6px}
+.wa-notif-row{display:grid;grid-template-columns:110px 140px 1fr 32px;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)}
+.wa-notif-row:last-of-type{border-bottom:none}
+.wa-notif-input{padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;width:100%;min-width:0}
+.wa-notif-input:focus{outline:none;border-color:var(--accent)}
+.wa-evento-checks{display:flex;gap:10px;flex-wrap:wrap}
+.wa-evento-label{font-size:12px;color:var(--text2);display:flex;align-items:center;gap:3px;cursor:pointer;white-space:nowrap}
+.wa-evento-label input{cursor:pointer}
+.wa-del-btn{padding:4px 8px;background:var(--red-bg);color:var(--red);border:1px solid var(--red);border-radius:5px;font-size:12px;cursor:pointer;font-weight:700}
+.wa-del-btn:hover{background:var(--red);color:#fff}
 .card-sub-step-nome{flex:1;line-height:1.3}
 .card-sub-step-dias{font-size:11px;color:var(--text2);font-weight:600;flex-shrink:0}
 .card-edit-lev{margin-top:8px;width:100%;padding:6px;background:none;border:1px solid var(--accent);color:var(--accent);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer}
@@ -518,6 +533,16 @@ tr:hover td{background:var(--bg)}
             <div class="config-section-header"><h3>Usuários</h3></div>
             <div class="config-section-body" id="cfg-users-list"></div>
           </div>
+          <div class="config-section">
+            <div class="config-section-header">
+              <h3>Notificações WhatsApp</h3>
+              <small style="color:var(--text2);font-size:12px">Defina quem recebe cada tipo de notificação</small>
+            </div>
+            <div class="config-section-body">
+              <div id="cfg-wa-list"></div>
+              <button class="btn-add-canal" style="margin-top:10px" onclick="addWaRecip()">+ Adicionar destinatário</button>
+            </div>
+          </div>
         </div>
 
         <!-- PROCESSOS -->
@@ -528,7 +553,8 @@ tr:hover td{background:var(--bg)}
               <small style="color:var(--text2);font-size:12px">Nome e prazo de cada sub-etapa — editável por aqui</small>
             </div>
             <div class="config-section-body">
-              <div id="cfg-subetapas-lev"></div>
+              <div id="cfg-subetapas-reun"></div>
+              <div id="cfg-subetapas-lev" style="margin-top:18px"></div>
               <div id="cfg-subetapas-aprv" style="margin-top:18px"></div>
             </div>
           </div>
@@ -828,6 +854,8 @@ function loadAll() {
   if (!config.executores)              config.executores              = getDefaultExecutores();
   if (!config.subEtapasLevantamento)   config.subEtapasLevantamento   = getDefaultSubEtapasLev();
   if (!config.subEtapasAproveitamento) config.subEtapasAproveitamento = getDefaultSubEtapasAprv();
+  if (!config.subEtapasReuniao)        config.subEtapasReuniao        = getDefaultSubEtapasReun();
+  if (!config.notifWhatsapp)           config.notifWhatsapp           = [];
   // migrate canais: add comissão fields if missing
   (config.canaisOrigem||[]).forEach(c => {
     if (!c.comissaoBeneficiario) c.comissaoBeneficiario = '';
@@ -847,6 +875,7 @@ function loadAll() {
     if (!o.status)          o.status = 'ativo';
     if (!o.subEtapas)       o.subEtapas = null;
     if (!o.subEtapasAprv)   o.subEtapasAprv = null;
+    if (!o.subEtapasReun)   o.subEtapasReun = null;
     if (!o.statusMotivo)    o.statusMotivo = '';
   });
 }
@@ -884,7 +913,9 @@ function getDefaultConfig() {
     canaisOrigem:            getDefaultCanais(),
     executores:              getDefaultExecutores(),
     subEtapasLevantamento:   getDefaultSubEtapasLev(),
-    subEtapasAproveitamento: getDefaultSubEtapasAprv()
+    subEtapasAproveitamento: getDefaultSubEtapasAprv(),
+    subEtapasReuniao:        getDefaultSubEtapasReun(),
+    notifWhatsapp:           []
   };
 }
 
@@ -902,6 +933,14 @@ function getDefaultSubEtapasLev() {
     {nome:'Apuração Prévia',              dias:1},
     {nome:'Análise',                      dias:2},
     {nome:'Fechamento de Relatório Prévio', dias:1}
+  ];
+}
+
+function getDefaultSubEtapasReun() {
+  return [
+    {nome:'NDA',                   dias:1, opcional:true},
+    {nome:'Proposta',              dias:3},
+    {nome:'Procuração Eletrônica', dias:2}
   ];
 }
 
@@ -1110,6 +1149,16 @@ function showNotif(msg, type='success') {
   el.style.display = 'block';
   setTimeout(() => { el.style.display='none'; }, 3000);
 }
+
+function sendWhatsAppNotif(evento, msg) {
+  const recips = (config.notifWhatsapp||[]).filter(r => r.tel && (r.eventos||[]).includes(evento));
+  recips.forEach((r, i) => {
+    const tel = r.tel.replace(/\D/g,'');
+    if (!tel) return;
+    const url = `https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`;
+    setTimeout(() => window.open(url, '_blank'), i * 400);
+  });
+}
 function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
 // ============================================================
@@ -1249,18 +1298,26 @@ function buildSubCascade(opp, ses, type) {
   const doneCount = ses.filter(s=>s.concluido).length;
   const isOpen = openSubPanels.has(opp.id);
   const dots = ses.map((se,i)=>{
-    const done=se.concluido, active=!done&&(i===0||ses[i-1].concluido);
-    return `<span class="sub-dot ${done?'done':active?'active':'pending'}"></span>`;
+    const done=se.concluido, skipped=!!se.pulada;
+    const active=!done&&!skipped&&(i===0||(ses[i-1].concluido||ses[i-1].pulada));
+    return `<span class="sub-dot ${done?'done':skipped?'skip':active?'active':'pending'}"></span>`;
   }).join('');
   const steps = ses.map((se,i)=>{
-    const done=se.concluido, prev=i===0||ses[i-1].concluido, active=!done&&prev;
-    return `<div class="card-sub-step ${done?'step-done':active?'step-active':'step-pending'}">
-      <input type="checkbox" ${done?'checked':''} ${!active&&!done?'disabled':''}
+    const done=se.concluido, skipped=!!se.pulada;
+    const prevOk = i===0||(ses[i-1].concluido||ses[i-1].pulada);
+    const active = !done&&!skipped&&prevOk;
+    const cls = done?'step-done':skipped?'step-skip':active?'step-active':'step-pending';
+    const skipBtn = se.opcional&&active
+      ? `<button class="card-sub-skip-btn" onclick="event.stopPropagation();skipSubEtapa(${opp.id},${i},'${type}')">Pular</button>`
+      : (skipped ? `<span style="font-size:11px;color:#bbb;font-style:italic">pulado</span>` : '');
+    return `<div class="card-sub-step ${cls}">
+      <input type="checkbox" ${done?'checked':''} ${(!active&&!done)||skipped?'disabled':''}
         onclick="event.stopPropagation()"
         onchange="event.stopPropagation();checkSubEtapaCard(${opp.id},${i},this.checked,'${type}')"
         style="flex-shrink:0;cursor:${active||done?'pointer':'not-allowed'}">
-      <span class="card-sub-step-nome">${i+1}. ${se.nome}</span>
+      <span class="card-sub-step-nome">${i+1}. ${se.nome}${se.opcional?' <span style="font-size:10px;color:var(--text2);font-weight:400">(opcional)</span>':''}</span>
       <span class="card-sub-step-dias">${se.dias}d</span>
+      ${skipBtn}
     </div>`;
   }).join('');
   return `
@@ -1310,6 +1367,7 @@ function makeCard(opp) {
     (etapaName.includes('compens') && !etapaName.includes('previdenci')) ||
     etapaName.includes('aproveitament')
   );
+  const isReun = !isLev && !isAprv && (etapaName.includes('reuni'));
 
   if (isLev) {
     const def = (config.subEtapasLevantamento||SUB_ETAPAS_LEVA).map((se,i)=>({idx:i,nome:se.nome,dias:se.dias,concluido:false,dataInicio:null,dataConcluido:null}));
@@ -1320,6 +1378,11 @@ function makeCard(opp) {
     const def = (config.subEtapasAproveitamento||getDefaultSubEtapasAprv()).map((se,i)=>({idx:i,nome:se.nome,dias:se.dias,concluido:false,dataInicio:null,dataConcluido:null}));
     const ses = opp.subEtapasAprv && opp.subEtapasAprv.length ? opp.subEtapasAprv : def;
     card.innerHTML = baseHtml + buildSubCascade(opp, ses, 'aprv');
+    card.addEventListener('click', e => { if(!dragging) toggleCardSubPanel(opp.id); });
+  } else if (isReun) {
+    const def = (config.subEtapasReuniao||getDefaultSubEtapasReun()).map((se,i)=>({idx:i,nome:se.nome,dias:se.dias,opcional:!!se.opcional,concluido:false,pulada:false,dataInicio:null,dataConcluido:null}));
+    const ses = opp.subEtapasReun && opp.subEtapasReun.length ? opp.subEtapasReun : def;
+    card.innerHTML = baseHtml + buildSubCascade(opp, ses, 'reun');
     card.addEventListener('click', e => { if(!dragging) toggleCardSubPanel(opp.id); });
   } else {
     card.innerHTML = baseHtml;
@@ -1392,6 +1455,7 @@ function moveOppToEtapa(oppId, newEtapaId) {
       (nn.includes('compens') && !nn.includes('previdenci')) ||
       nn.includes('aproveitament')
     );
+    const newIsReun = !newIsLev && !newIsAprv && nn.includes('reuni');
     if (newIsLev && !opp.subEtapas) {
       opp.subEtapas = (config.subEtapasLevantamento||SUB_ETAPAS_LEVA).map((se,i) => ({
         idx:i, nome:se.nome, dias:se.dias, concluido:false,
@@ -1406,9 +1470,17 @@ function moveOppToEtapa(oppId, newEtapaId) {
         dataConcluido: null
       }));
     }
+    if (newIsReun && !opp.subEtapasReun) {
+      opp.subEtapasReun = (config.subEtapasReuniao||getDefaultSubEtapasReun()).map((se,i) => ({
+        idx:i, nome:se.nome, dias:se.dias, opcional:!!se.opcional, concluido:false, pulada:false,
+        dataInicio: i===0 ? new Date().toISOString() : null,
+        dataConcluido: null
+      }));
+    }
   }
   saveOpors();
   renderPipeline();
+  sendWhatsAppNotif('mudanca_etapa', `🔄 *BIDATX* — ${opp.cliente} avançou para *${newName}*`);
   showNotif(`${opp.cliente} → ${newName}`);
 }
 
@@ -1469,6 +1541,7 @@ function openOpp(id, startTab) {
     (etapaName2.includes('compens') && !etapaName2.includes('previdenci')) ||
     etapaName2.includes('aproveitament')
   );
+  const isReun2 = !isLev2 && !isAprv2 && etapaName2.includes('reuni');
   let needSave = false;
   if (isLev2 && !opp.subEtapas) {
     opp.subEtapas = (config.subEtapasLevantamento||SUB_ETAPAS_LEVA).map((se,i) => ({
@@ -1481,6 +1554,14 @@ function openOpp(id, startTab) {
   if (isAprv2 && !opp.subEtapasAprv) {
     opp.subEtapasAprv = (config.subEtapasAproveitamento||getDefaultSubEtapasAprv()).map((se,i) => ({
       idx:i, nome:se.nome, dias:se.dias, concluido:false,
+      dataInicio: i===0 ? new Date().toISOString() : null,
+      dataConcluido: null
+    }));
+    needSave = true;
+  }
+  if (isReun2 && !opp.subEtapasReun) {
+    opp.subEtapasReun = (config.subEtapasReuniao||getDefaultSubEtapasReun()).map((se,i) => ({
+      idx:i, nome:se.nome, dias:se.dias, opcional:!!se.opcional, concluido:false, pulada:false,
       dataInicio: i===0 ? new Date().toISOString() : null,
       dataConcluido: null
     }));
@@ -1672,6 +1753,7 @@ function saveOpp() {
     closeModal('modal-opp-overlay');
     if (document.getElementById('tab-funil').classList.contains('active')) renderPipeline();
     if (document.getElementById('tab-clientes').classList.contains('active')) renderClientes();
+    sendWhatsAppNotif('novo_cliente', `🆕 *BIDATX* — Novo cliente cadastrado: *${newOpp.cliente}* (${newOpp.tipo}) por ${currentUser.nome}`);
     showNotif('Cliente cadastrado! Clique no card do pipeline para registrar follow-ups.');
     return;
   }
@@ -2136,7 +2218,68 @@ function renderConfig() {
   document.getElementById('cfg-meta').value    = (config.metaMensal||300000).toFixed(2);
   document.getElementById('cfg-fu-dias').value = config.fuDias||7;
   renderUsersConfig();
-  // Don't re-render processos/canais unless pane is active
+  renderConfigWA();
+}
+
+const WA_EVENTOS = [
+  {key:'novo_cliente',   label:'Novo cliente'},
+  {key:'mudanca_etapa',  label:'Mudança de etapa'},
+  {key:'subetapa',       label:'Sub-etapa concluída'}
+];
+
+function renderConfigWA() {
+  const list = document.getElementById('cfg-wa-list'); if(!list) return;
+  const recips = config.notifWhatsapp || [];
+  if (!recips.length) {
+    list.innerHTML = '<p style="font-size:13px;color:var(--text2);margin-bottom:8px">Nenhum destinatário configurado.</p>';
+    return;
+  }
+  let html = `<div class="wa-notif-header">
+    <span>Nome</span><span>WhatsApp</span>
+    <span style="display:flex;gap:10px">${WA_EVENTOS.map(e=>`<span style="min-width:110px">${e.label}</span>`).join('')}</span>
+    <span></span>
+  </div>`;
+  recips.forEach((r,i) => {
+    const checks = WA_EVENTOS.map(e =>
+      `<label class="wa-evento-label" style="min-width:110px">
+        <input type="checkbox" ${(r.eventos||[]).includes(e.key)?'checked':''}
+          onchange="updateWaEvento(${i},'${e.key}',this.checked)">
+        ${e.label}
+      </label>`
+    ).join('');
+    html += `<div class="wa-notif-row">
+      <input class="wa-notif-input" placeholder="Nome" value="${r.nome||''}" oninput="updateWaRecip(${i},'nome',this.value)">
+      <input class="wa-notif-input" placeholder="5521999999999" value="${r.tel||''}" oninput="updateWaRecip(${i},'tel',this.value)">
+      <div class="wa-evento-checks">${checks}</div>
+      <button class="wa-del-btn" onclick="removeWaRecip(${i})">×</button>
+    </div>`;
+  });
+  list.innerHTML = html;
+}
+
+function addWaRecip() {
+  if (!config.notifWhatsapp) config.notifWhatsapp = [];
+  config.notifWhatsapp.push({nome:'', tel:'', eventos:['novo_cliente','mudanca_etapa','subetapa']});
+  saveConfig(); renderConfigWA();
+}
+
+function removeWaRecip(i) {
+  config.notifWhatsapp.splice(i,1);
+  saveConfig(); renderConfigWA(); showNotif('Destinatário removido');
+}
+
+function updateWaRecip(i, field, val) {
+  if (!config.notifWhatsapp||!config.notifWhatsapp[i]) return;
+  config.notifWhatsapp[i][field] = val;
+  saveConfig();
+}
+
+function updateWaEvento(i, evento, checked) {
+  if (!config.notifWhatsapp||!config.notifWhatsapp[i]) return;
+  if (!config.notifWhatsapp[i].eventos) config.notifWhatsapp[i].eventos = [];
+  if (checked) { if (!config.notifWhatsapp[i].eventos.includes(evento)) config.notifWhatsapp[i].eventos.push(evento); }
+  else { config.notifWhatsapp[i].eventos = config.notifWhatsapp[i].eventos.filter(e=>e!==evento); }
+  saveConfig();
 }
 
 function saveMeta() {
@@ -2225,6 +2368,7 @@ function renderAllEtapasConfig() {
 }
 
 function renderSubEtapasConfig() {
+  renderSubEtapaGroup('reun', 'cfg-subetapas-reun', 'Reunião / Apresentação');
   renderSubEtapaGroup('lev',  'cfg-subetapas-lev',  'Levantamento de Oportunidades');
   renderSubEtapaGroup('aprv', 'cfg-subetapas-aprv', 'Compensação / Restituição / Extemporâneo');
 }
@@ -2233,6 +2377,8 @@ function renderSubEtapaGroup(type, containerId, title) {
   const el = document.getElementById(containerId); if(!el) return;
   const ses = type==='lev'
     ? (config.subEtapasLevantamento||getDefaultSubEtapasLev())
+    : type==='reun'
+    ? (config.subEtapasReuniao||getDefaultSubEtapasReun())
     : (config.subEtapasAproveitamento||getDefaultSubEtapasAprv());
   let html = `<div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">${title}</div>`;
   ses.forEach((se,i) => {
@@ -2249,6 +2395,9 @@ function saveSubEtapaConfig(type, idx, field, val) {
   if (type==='lev') {
     if (!config.subEtapasLevantamento) config.subEtapasLevantamento = getDefaultSubEtapasLev();
     config.subEtapasLevantamento[idx][field] = val;
+  } else if (type==='reun') {
+    if (!config.subEtapasReuniao) config.subEtapasReuniao = getDefaultSubEtapasReun();
+    config.subEtapasReuniao[idx][field] = val;
   } else {
     if (!config.subEtapasAproveitamento) config.subEtapasAproveitamento = getDefaultSubEtapasAprv();
     config.subEtapasAproveitamento[idx][field] = val;
@@ -2425,23 +2574,45 @@ function toggleCardSubPanel(oppId) {
 
 function checkSubEtapaCard(oppId, idx, checked, type) {
   const opp = opors.find(o=>o.id===oppId); if(!opp) return;
-  const seKey = type==='aprv' ? 'subEtapasAprv' : 'subEtapas';
+  const seKey = type==='aprv' ? 'subEtapasAprv' : type==='reun' ? 'subEtapasReun' : 'subEtapas';
   const defArr = type==='aprv'
     ? (config.subEtapasAproveitamento||getDefaultSubEtapasAprv()).map((se,i)=>({idx:i,nome:se.nome,dias:se.dias,concluido:false,dataInicio:null,dataConcluido:null}))
+    : type==='reun'
+    ? (config.subEtapasReuniao||getDefaultSubEtapasReun()).map((se,i)=>({idx:i,nome:se.nome,dias:se.dias,opcional:!!se.opcional,concluido:false,pulada:false,dataInicio:null,dataConcluido:null}))
     : (config.subEtapasLevantamento||SUB_ETAPAS_LEVA).map((se,i)=>({idx:i,nome:se.nome,dias:se.dias,concluido:false,dataInicio:null,dataConcluido:null}));
   if (!opp[seKey] || !opp[seKey].length) opp[seKey] = defArr;
   const se = opp[seKey][idx]; if(!se) return;
   se.concluido = checked;
   if (checked) {
+    se.pulada = false;
     se.dataConcluido = new Date().toISOString();
     if (!se.dataInicio) se.dataInicio = new Date().toISOString();
     if (idx+1 < opp[seKey].length && !opp[seKey][idx+1].dataInicio)
       opp[seKey][idx+1].dataInicio = new Date().toISOString();
     addHistorico(opp, `Sub-etapa concluída: "${se.nome}"`, 'subetapa');
+    sendWhatsAppNotif('subetapa', `✅ *BIDATX* — ${opp.cliente}: sub-etapa *${se.nome}* concluída`);
   } else {
     se.dataConcluido = null;
     addHistorico(opp, `Sub-etapa reaberta: "${se.nome}"`, 'subetapa');
   }
+  openSubPanels.add(oppId);
+  saveOpors();
+  renderPipeCards();
+}
+
+function skipSubEtapa(oppId, idx, type) {
+  const opp = opors.find(o=>o.id===oppId); if(!opp) return;
+  const seKey = type==='aprv' ? 'subEtapasAprv' : type==='reun' ? 'subEtapasReun' : 'subEtapas';
+  const defArr = type==='reun'
+    ? (config.subEtapasReuniao||getDefaultSubEtapasReun()).map((se,i)=>({idx:i,nome:se.nome,dias:se.dias,opcional:!!se.opcional,concluido:false,pulada:false,dataInicio:null,dataConcluido:null}))
+    : (config.subEtapasLevantamento||SUB_ETAPAS_LEVA).map((se,i)=>({idx:i,nome:se.nome,dias:se.dias,concluido:false,dataInicio:null,dataConcluido:null}));
+  if (!opp[seKey] || !opp[seKey].length) opp[seKey] = defArr;
+  const se = opp[seKey][idx]; if(!se||!se.opcional) return;
+  se.pulada = true;
+  se.concluido = false;
+  if (idx+1 < opp[seKey].length && !opp[seKey][idx+1].dataInicio)
+    opp[seKey][idx+1].dataInicio = new Date().toISOString();
+  addHistorico(opp, `Sub-etapa pulada: "${se.nome}"`, 'subetapa');
   openSubPanels.add(oppId);
   saveOpors();
   renderPipeCards();
