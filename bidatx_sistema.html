@@ -2624,11 +2624,21 @@ function renderInativos() {
       <td>
         <button onclick="openOppEdit(${opp.id})" style="font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--white);color:var(--navy);cursor:pointer;margin-right:4px">Ver</button>
         <button onclick="reactivateOpp(${opp.id})" style="font-size:11px;padding:3px 8px;border:1px solid var(--green);border-radius:5px;background:var(--green-bg);color:var(--green);cursor:pointer">Reativar</button>
+        <button onclick="deleteOpp(${opp.id})" style="font-size:11px;padding:3px 8px;border:1px solid var(--red);border-radius:5px;background:var(--red-bg);color:var(--red);cursor:pointer;margin-left:4px">Excluir</button>
       </td>
     </tr>`;
   });
   html += '</tbody></table></div>';
   content.innerHTML = html;
+}
+
+function deleteOpp(id) {
+  const opp = opors.find(o=>o.id===id); if(!opp) return;
+  if(!confirm(`Excluir permanentemente "${opp.cliente}"?\n\nEssa ação não pode ser desfeita.`)) return;
+  opors = opors.filter(o=>o.id!==id);
+  saveOpors();
+  renderInativos();
+  showNotif(`"${opp.cliente}" excluído`);
 }
 
 function reactivateOpp(id) {
