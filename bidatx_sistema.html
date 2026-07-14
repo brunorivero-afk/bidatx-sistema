@@ -1150,8 +1150,16 @@ function showNotif(msg, type='success') {
   setTimeout(() => { el.style.display='none'; }, 3000);
 }
 
-function sendWhatsAppNotif(evento, msg) {
-  const recips = (config.notifWhatsapp||[]).filter(r => r.tel && (r.eventos||[]).includes(evento));
+function sendWhatsAppNotif(evento, msg, opts={}) {
+  const recips = (config.notifWhatsapp||[]).filter(r => {
+    if (!r.tel || !(r.eventos||[]).includes(evento)) return false;
+    if ((evento==='mudanca_etapa'||evento==='subetapa') && r.etapasFiltro && r.etapasFiltro.trim()) {
+      const kws = r.etapasFiltro.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
+      const nome = (opts.etapaNome||'').toLowerCase();
+      return kws.some(kw => nome.includes(kw));
+    }
+    return true;
+  });
   recips.forEach((r, i) => {
     const tel = r.tel.replace(/\D/g,'');
     if (!tel) return;
@@ -1480,7 +1488,7 @@ function moveOppToEtapa(oppId, newEtapaId) {
   }
   saveOpors();
   renderPipeline();
-  sendWhatsAppNotif('mudanca_etapa', `🔄 *BIDATX* — ${opp.cliente} avançou para *${newName}*`);
+  sendWhatsAppNotif('mudanca_etapa', `🔄 *BIDATX* — ${opp.cliente} avançou para *${newName}*`, {etapaNome: newName});
   showNotif(`${opp.cliente} → ${newName}`);
 }
 
@@ -2234,24 +2242,28 @@ function renderConfigWA() {
     list.innerHTML = '<p style="font-size:13px;color:var(--text2);margin-bottom:8px">Nenhum destinatário configurado.</p>';
     return;
   }
-  let html = `<div class="wa-notif-header">
-    <span>Nome</span><span>WhatsApp</span>
-    <span style="display:flex;gap:10px">${WA_EVENTOS.map(e=>`<span style="min-width:110px">${e.label}</span>`).join('')}</span>
-    <span></span>
-  </div>`;
+  let html = '';
   recips.forEach((r,i) => {
     const checks = WA_EVENTOS.map(e =>
-      `<label class="wa-evento-label" style="min-width:110px">
+      `<label class="wa-evento-label">
         <input type="checkbox" ${(r.eventos||[]).includes(e.key)?'checked':''}
           onchange="updateWaEvento(${i},'${e.key}',this.checked)">
         ${e.label}
       </label>`
     ).join('');
-    html += `<div class="wa-notif-row">
-      <input class="wa-notif-input" placeholder="Nome" value="${r.nome||''}" oninput="updateWaRecip(${i},'nome',this.value)">
-      <input class="wa-notif-input" placeholder="5521999999999" value="${r.tel||''}" oninput="updateWaRecip(${i},'tel',this.value)">
-      <div class="wa-evento-checks">${checks}</div>
-      <button class="wa-del-btn" onclick="removeWaRecip(${i})">×</button>
+    const temFiltroEtapa = (r.eventos||[]).some(e=>e==='mudanca_etapa'||e==='subetapa');
+    html += `<div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;background:var(--white)">
+      <div style="display:grid;grid-template-columns:110px 160px 1fr 32px;gap:8px;align-items:center;margin-bottom:${temFiltroEtapa?'10px':'0'}">
+        <input class="wa-notif-input" placeholder="Nome" value="${r.nome||''}" oninput="updateWaRecip(${i},'nome',this.value)">
+        <input class="wa-notif-input" placeholder="5521999999999" value="${r.tel||''}" oninput="updateWaRecip(${i},'tel',this.value)">
+        <div class="wa-evento-checks">${checks}</div>
+        <button class="wa-del-btn" onclick="removeWaRecip(${i})">×</button>
+      </div>
+      ${temFiltroEtapa ? `<div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:12px;color:var(--text2);font-weight:600;white-space:nowrap">Etapas específicas:</span>
+        <input class="wa-notif-input" style="flex:1;font-size:12px" placeholder="Contrato, Levantamento… (vazio = todas)"
+          value="${r.etapasFiltro||''}" oninput="updateWaRecip(${i},'etapasFiltro',this.value)">
+      </div>` : ''}
     </div>`;
   });
   list.innerHTML = html;
@@ -2259,7 +2271,7 @@ function renderConfigWA() {
 
 function addWaRecip() {
   if (!config.notifWhatsapp) config.notifWhatsapp = [];
-  config.notifWhatsapp.push({nome:'', tel:'', eventos:['novo_cliente','mudanca_etapa','subetapa']});
+  config.notifWhatsapp.push({nome:'', tel:'', eventos:['novo_cliente','mudanca_etapa','subetapa'], etapasFiltro:''});
   saveConfig(); renderConfigWA();
 }
 
@@ -2590,7 +2602,7 @@ function checkSubEtapaCard(oppId, idx, checked, type) {
     if (idx+1 < opp[seKey].length && !opp[seKey][idx+1].dataInicio)
       opp[seKey][idx+1].dataInicio = new Date().toISOString();
     addHistorico(opp, `Sub-etapa concluída: "${se.nome}"`, 'subetapa');
-    sendWhatsAppNotif('subetapa', `✅ *BIDATX* — ${opp.cliente}: sub-etapa *${se.nome}* concluída`);
+    sendWhatsAppNotif('subetapa', `✅ *BIDATX* — ${opp.cliente}: sub-etapa *${se.nome}* concluída`, {etapaNome: se.nome});
   } else {
     se.dataConcluido = null;
     addHistorico(opp, `Sub-etapa reaberta: "${se.nome}"`, 'subetapa');
