@@ -678,7 +678,6 @@ tr:hover td{background:var(--bg)}
         <button class="modal-inner-tab active" onclick="showInnerTab('dados')">Dados</button>
         <button class="modal-inner-tab" onclick="showInnerTab('followup')">Follow-up</button>
         <button class="modal-inner-tab" onclick="showInnerTab('documentos')">Documentos</button>
-        <button class="modal-inner-tab" onclick="showInnerTab('aproveitamentos')">Aproveitamentos</button>
         <button class="modal-inner-tab" onclick="showInnerTab('historico')">Histórico</button>
         <button class="modal-inner-tab" id="tab-btn-subetapas" style="display:none" onclick="showInnerTab('subetapas')">Sub-etapas</button>
         <button class="modal-inner-tab" id="tab-btn-pagamentos" style="display:none" onclick="showInnerTab('pagamentos')">💰 Pagamentos</button>
@@ -774,8 +773,21 @@ tr:hover td{background:var(--bg)}
         <div id="docs-past-list"></div>
       </div>
 
-      <!-- APROVEITAMENTOS -->
-      <div class="inner-pane" id="opp-pane-aproveitamentos">
+      <!-- HISTÓRICO -->
+      <div class="inner-pane" id="opp-pane-historico">
+        <div id="hist-list"></div>
+      </div>
+
+      <!-- SUB-ETAPAS (Levantamento) -->
+      <div class="inner-pane" id="opp-pane-subetapas">
+        <div id="subetapas-list"></div>
+      </div>
+
+      <!-- PAGAMENTOS -->
+      <div class="inner-pane" id="opp-pane-pagamentos">
+
+        <!-- Aproveitamentos (visível a todos) -->
+        <div class="mf-section-label">Aproveitamentos</div>
         <div id="aprv-list"></div>
         <button class="btn-add-fu" onclick="toggleAprvForm()">+ Registrar Aproveitamento</button>
         <div id="aprv-new-form" style="display:none" class="fu-form">
@@ -794,67 +806,57 @@ tr:hover td{background:var(--bg)}
           <button class="btn-confirm" style="width:auto" onclick="saveAprv()">Salvar</button>
           <button class="btn-cancel" style="margin-left:6px" onclick="toggleAprvForm()">Cancelar</button>
         </div>
-      </div>
 
-      <!-- HISTÓRICO -->
-      <div class="inner-pane" id="opp-pane-historico">
-        <div id="hist-list"></div>
-      </div>
-
-      <!-- SUB-ETAPAS (Levantamento) -->
-      <div class="inner-pane" id="opp-pane-subetapas">
-        <div id="subetapas-list"></div>
-      </div>
-
-      <!-- PAGAMENTOS (Sócio only) -->
-      <div class="inner-pane" id="opp-pane-pagamentos">
-        <div class="mf-section-label">Honorários</div>
-        <div class="mf-row">
-          <div class="mf-group"><label>% de Êxito (sucesso)</label><input id="opp-exito" type="number" min="0" max="100" step="0.5" placeholder="ex: 25"></div>
-          <div class="mf-group"><label>Honorários Fixos (R$)</label><input id="opp-honor" type="number" min="0" step="100" placeholder="0"></div>
-        </div>
-        <div class="pag-kpi-row" id="pag-kpi-row">
-          <div class="pag-kpi"><div class="pag-kpi-label">Valor Levantado</div><div class="pag-kpi-val" id="pag-vlev">—</div></div>
-          <div class="pag-kpi"><div class="pag-kpi-label">Valor Aprovado</div><div class="pag-kpi-val green" id="pag-vaprv">—</div></div>
-          <div class="pag-kpi"><div class="pag-kpi-label">A Receber (êxito)</div><div class="pag-kpi-val accent" id="pag-vrec">—</div></div>
-        </div>
-        <div class="mf-row">
-          <div class="mf-group"><label>Status de Recebimento</label>
-            <select id="pag-status">
-              <option value="pendente">Pendente</option>
-              <option value="parcial">Parcial</option>
-              <option value="pago">Pago ✓</option>
-            </select>
+        <!-- Financeiro: apenas Sócio -->
+        <div id="pag-socio-section" style="display:none">
+          <div class="mf-section-label" style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px">Honorários</div>
+          <div class="mf-row">
+            <div class="mf-group"><label>% de Êxito (sucesso)</label><input id="opp-exito" type="number" min="0" max="100" step="0.5" placeholder="ex: 25"></div>
+            <div class="mf-group"><label>Honorários Fixos (R$)</label><input id="opp-honor" type="number" min="0" step="100" placeholder="0"></div>
           </div>
-          <div class="mf-group"><label>Data de Recebimento</label><input type="date" id="pag-data"></div>
-        </div>
-        <div class="mf-row single">
-          <div class="mf-group"><label>Observações de Pagamento</label><textarea id="pag-obs" rows="2"></textarea></div>
-        </div>
+          <div class="pag-kpi-row" id="pag-kpi-row">
+            <div class="pag-kpi"><div class="pag-kpi-label">Valor Levantado</div><div class="pag-kpi-val" id="pag-vlev">—</div></div>
+            <div class="pag-kpi"><div class="pag-kpi-label">Valor Aprovado</div><div class="pag-kpi-val green" id="pag-vaprv">—</div></div>
+            <div class="pag-kpi"><div class="pag-kpi-label">A Receber (êxito)</div><div class="pag-kpi-val accent" id="pag-vrec">—</div></div>
+          </div>
+          <div class="mf-row">
+            <div class="mf-group"><label>Status de Recebimento</label>
+              <select id="pag-status">
+                <option value="pendente">Pendente</option>
+                <option value="parcial">Parcial</option>
+                <option value="pago">Pago ✓</option>
+              </select>
+            </div>
+            <div class="mf-group"><label>Data de Recebimento</label><input type="date" id="pag-data"></div>
+          </div>
+          <div class="mf-row single">
+            <div class="mf-group"><label>Observações de Pagamento</label><textarea id="pag-obs" rows="2"></textarea></div>
+          </div>
 
-        <div class="mf-section-label" style="margin-top:16px">Comissão Parceiro</div>
-        <div class="mf-row">
-          <div class="mf-group"><label>Beneficiário</label><input id="opp-com-ben" type="text" placeholder="Nome do indicador/parceiro"></div>
-          <div class="mf-group"><label>Percentual (%)</label><input id="opp-com-pct" type="number" min="0" max="100" step="0.5" placeholder="0"></div>
-        </div>
-        <div class="pag-com-box">
-          <div>
-            <div style="font-size:11px;font-weight:700;color:#92400e;text-transform:uppercase;margin-bottom:2px">Valor da Comissão</div>
-            <div class="pag-com-box-val" id="pag-com-val">—</div>
+          <div class="mf-section-label" style="margin-top:16px">Comissão Parceiro</div>
+          <div class="mf-row">
+            <div class="mf-group"><label>Beneficiário</label><input id="opp-com-ben" type="text" placeholder="Nome do indicador/parceiro"></div>
+            <div class="mf-group"><label>Percentual (%)</label><input id="opp-com-pct" type="number" min="0" max="100" step="0.5" placeholder="0"></div>
           </div>
-          <div style="font-size:12px;color:var(--text2)">= Valor Aprovado × %</div>
-        </div>
-        <div class="mf-row">
-          <div class="mf-group"><label>Status da Comissão</label>
-            <select id="pag-com-status">
-              <option value="pendente">Pendente</option>
-              <option value="pago">Pago ✓</option>
-            </select>
+          <div class="pag-com-box">
+            <div>
+              <div style="font-size:11px;font-weight:700;color:#92400e;text-transform:uppercase;margin-bottom:2px">Valor da Comissão</div>
+              <div class="pag-com-box-val" id="pag-com-val">—</div>
+            </div>
+            <div style="font-size:12px;color:var(--text2)">= Valor Aprovado × %</div>
           </div>
-          <div class="mf-group"><label>Data de Pagamento</label><input type="date" id="pag-com-data"></div>
-        </div>
-        <div class="mf-row single">
-          <div class="mf-group"><label>Observações da Comissão</label><textarea id="opp-com-obs" rows="2" placeholder="Condições, referência..."></textarea></div>
+          <div class="mf-row">
+            <div class="mf-group"><label>Status da Comissão</label>
+              <select id="pag-com-status">
+                <option value="pendente">Pendente</option>
+                <option value="pago">Pago ✓</option>
+              </select>
+            </div>
+            <div class="mf-group"><label>Data de Pagamento</label><input type="date" id="pag-com-data"></div>
+          </div>
+          <div class="mf-row single">
+            <div class="mf-group"><label>Observações da Comissão</label><textarea id="opp-com-obs" rows="2" placeholder="Condições, referência..."></textarea></div>
+          </div>
         </div>
       </div>
 
@@ -1204,7 +1206,7 @@ function showProcTab(tab) {
 
 // Modal inner tabs — moved to modal-head so never scrolls away
 function showInnerTab(tab) {
-  const tabs = ['dados','followup','documentos','aproveitamentos','historico','subetapas','pagamentos'];
+  const tabs = ['dados','followup','documentos','historico','subetapas','pagamentos'];
   document.querySelectorAll('#opp-inner-tabs .modal-inner-tab').forEach((b,i) => {
     b.classList.toggle('active', tabs[i]===tab);
   });
@@ -1215,7 +1217,6 @@ function showInnerTab(tab) {
   document.getElementById('modal-opp-body').scrollTop = 0;
   if (tab==='followup')        renderFuTab();
   if (tab==='documentos')      renderDocsTab();
-  if (tab==='aproveitamentos') renderAprvTab();
   if (tab==='historico')       renderHistTab();
   if (tab==='subetapas')       renderSubEtapasTab();
   if (tab==='pagamentos')      renderPagTab();
@@ -1642,7 +1643,7 @@ function openOpp(id, startTab) {
   const tabBtn = document.getElementById('tab-btn-subetapas');
   if (tabBtn) tabBtn.style.display = '';
   const pagBtn = document.getElementById('tab-btn-pagamentos');
-  if (pagBtn) pagBtn.style.display = currentUser.perfil==='Socio' ? '' : 'none';
+  if (pagBtn) pagBtn.style.display = '';
   const etapasOpp = getEtapasFor(opp.tipo);
   const thisEtapa2 = etapasOpp.find(e => e.id == opp.etapaId);
   const etapaName2 = thisEtapa2 ? thisEtapa2.nome.toLowerCase() : '';
@@ -3176,6 +3177,11 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
 // PAGAMENTOS
 // ============================================================
 function renderPagTab() {
+  renderAprvTab();
+  const isSocio = currentUser && currentUser.perfil === 'Socio';
+  const socioSec = document.getElementById('pag-socio-section');
+  if (socioSec) socioSec.style.display = isSocio ? '' : 'none';
+  if (!isSocio) return;
   const opp = opors.find(o=>o.id===editingOppId);
   if (!opp) return;
   const vlev  = (opp.valorLevantadoFiscal||0) + (opp.valorLevantadoPrevidenciario||0);
