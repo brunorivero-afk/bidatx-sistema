@@ -389,6 +389,19 @@ tr:hover td{background:var(--bg)}
 /* Comissão / Sócio-only */
 .comissao-section{background:#fef9ec;border:1px solid #f0d070;border-radius:8px;padding:14px;margin-top:14px}
 .comissao-section-label{font-size:11px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+/* Pagamentos */
+.pag-kpi-row{display:flex;gap:12px;flex-wrap:wrap;background:var(--bg);border-radius:8px;padding:14px;margin-bottom:14px}
+.pag-kpi{flex:1;min-width:110px}
+.pag-kpi-label{font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.pag-kpi-val{font-size:17px;font-weight:800;color:var(--navy);line-height:1.1}
+.pag-kpi-val.green{color:var(--green)}
+.pag-kpi-val.accent{color:var(--accent);font-size:20px}
+.pag-com-box{background:#fef9ec;border:1px solid #f0d070;border-radius:8px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.pag-com-box-val{font-size:16px;font-weight:800;color:#92400e}
+.pag-status-badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700}
+.pag-badge-pendente{background:#fee2e2;color:var(--red)}
+.pag-badge-parcial{background:#fef3c7;color:var(--amber)}
+.pag-badge-pago{background:var(--green-bg);color:var(--green)}
 
 /* Relatório */
 .rel-card{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:20px;max-width:680px}
@@ -668,6 +681,7 @@ tr:hover td{background:var(--bg)}
         <button class="modal-inner-tab" onclick="showInnerTab('aproveitamentos')">Aproveitamentos</button>
         <button class="modal-inner-tab" onclick="showInnerTab('historico')">Histórico</button>
         <button class="modal-inner-tab" id="tab-btn-subetapas" style="display:none" onclick="showInnerTab('subetapas')">Sub-etapas</button>
+        <button class="modal-inner-tab" id="tab-btn-pagamentos" style="display:none" onclick="showInnerTab('pagamentos')">💰 Pagamentos</button>
       </div>
     </div>
     <div class="modal-body" id="modal-opp-body">
@@ -693,40 +707,18 @@ tr:hover td{background:var(--bg)}
               <option>Previdenciário</option><option>Fiscal</option><option>Ambos</option>
               <option>Consultoria</option><option>Transação Tributária</option>
             </select><div class="field-error" id="err-tipo"></div></div>
-          <div class="mf-group"><label>Êxito / Honorários (%)</label><input id="opp-exito" type="number" min="0" max="100" placeholder="ex: 25"></div>
+          <div class="mf-group"></div>
         </div>
         <select id="opp-etapa" style="display:none"></select>
         <div class="mf-row">
           <div class="mf-group"><label>Canal de Origem</label>
-            <select id="opp-origem" onchange="onOrigemChange()"><option value="">Não informado</option></select></div>
-          <div class="mf-group"><label>Indicado por</label>
-            <input id="opp-indicado" type="text" placeholder="Nome da pessoa"></div>
-        </div>
-        <!-- Honorários R$ — só visível ao editar cliente existente -->
-        <div id="opp-financeiro-section" style="display:none">
-        <div class="mf-row">
-          <div class="mf-group"><label>Honorários (R$/mês)</label><input id="opp-honor" type="number" min="0" step="100"></div>
-          <div class="mf-group"></div>
-        </div>
-        </div>
-
-        <!-- Comissão — Sócio vê sempre (nova ou existente) -->
-        <div id="opp-comissao-section" style="display:none">
-          <div class="com-resumo" onclick="toggleComissaoForm()">
-            <span class="com-resumo-text" id="com-resumo-text">Comissão — clique para configurar</span>
-            <span class="com-resumo-edit" id="com-resumo-arrow">▼ editar</span>
-          </div>
-          <div class="com-form-wrap" id="com-form-wrap">
-            <div class="comissao-section" style="border-radius:0 0 8px 8px;border-top:none;margin-top:0">
-              <div class="mf-row">
-                <div class="mf-group"><label>Beneficiário</label><input id="opp-com-ben" type="text" placeholder="Nome do indicador/parceiro" oninput="updateComResumo()"></div>
-                <div class="mf-group"><label>Percentual (%)</label><input id="opp-com-pct" type="number" min="0" max="100" step="0.5" placeholder="0" oninput="updateComResumo()"></div>
-              </div>
-              <div class="mf-row single">
-                <div class="mf-group"><label>Observações</label><textarea id="opp-com-obs" rows="2" placeholder="Condições, prazo, referência..."></textarea></div>
-              </div>
+            <select id="opp-origem" onchange="onOrigemChange()"><option value="">Não informado</option></select>
+            <div id="opp-canal-com-info" style="display:none;font-size:12px;color:var(--text2);margin-top:5px;padding:5px 8px;background:var(--bg);border-radius:5px">
+              💰 Comissão automática: <strong id="opp-canal-com-text"></strong>
             </div>
           </div>
+          <div class="mf-group"><label>Indicado por</label>
+            <input id="opp-indicado" type="text" placeholder="Nome da pessoa"></div>
         </div>
 
         <!-- Campos visíveis apenas ao editar opp existente -->
@@ -812,6 +804,58 @@ tr:hover td{background:var(--bg)}
       <!-- SUB-ETAPAS (Levantamento) -->
       <div class="inner-pane" id="opp-pane-subetapas">
         <div id="subetapas-list"></div>
+      </div>
+
+      <!-- PAGAMENTOS (Sócio only) -->
+      <div class="inner-pane" id="opp-pane-pagamentos">
+        <div class="mf-section-label">Honorários</div>
+        <div class="mf-row">
+          <div class="mf-group"><label>% de Êxito (sucesso)</label><input id="opp-exito" type="number" min="0" max="100" step="0.5" placeholder="ex: 25"></div>
+          <div class="mf-group"><label>Honorários Fixos (R$)</label><input id="opp-honor" type="number" min="0" step="100" placeholder="0"></div>
+        </div>
+        <div class="pag-kpi-row" id="pag-kpi-row">
+          <div class="pag-kpi"><div class="pag-kpi-label">Valor Levantado</div><div class="pag-kpi-val" id="pag-vlev">—</div></div>
+          <div class="pag-kpi"><div class="pag-kpi-label">Valor Aprovado</div><div class="pag-kpi-val green" id="pag-vaprv">—</div></div>
+          <div class="pag-kpi"><div class="pag-kpi-label">A Receber (êxito)</div><div class="pag-kpi-val accent" id="pag-vrec">—</div></div>
+        </div>
+        <div class="mf-row">
+          <div class="mf-group"><label>Status de Recebimento</label>
+            <select id="pag-status">
+              <option value="pendente">Pendente</option>
+              <option value="parcial">Parcial</option>
+              <option value="pago">Pago ✓</option>
+            </select>
+          </div>
+          <div class="mf-group"><label>Data de Recebimento</label><input type="date" id="pag-data"></div>
+        </div>
+        <div class="mf-row single">
+          <div class="mf-group"><label>Observações de Pagamento</label><textarea id="pag-obs" rows="2"></textarea></div>
+        </div>
+
+        <div class="mf-section-label" style="margin-top:16px">Comissão Parceiro</div>
+        <div class="mf-row">
+          <div class="mf-group"><label>Beneficiário</label><input id="opp-com-ben" type="text" placeholder="Nome do indicador/parceiro"></div>
+          <div class="mf-group"><label>Percentual (%)</label><input id="opp-com-pct" type="number" min="0" max="100" step="0.5" placeholder="0"></div>
+        </div>
+        <div class="pag-com-box">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#92400e;text-transform:uppercase;margin-bottom:2px">Valor da Comissão</div>
+            <div class="pag-com-box-val" id="pag-com-val">—</div>
+          </div>
+          <div style="font-size:12px;color:var(--text2)">= Valor Aprovado × %</div>
+        </div>
+        <div class="mf-row">
+          <div class="mf-group"><label>Status da Comissão</label>
+            <select id="pag-com-status">
+              <option value="pendente">Pendente</option>
+              <option value="pago">Pago ✓</option>
+            </select>
+          </div>
+          <div class="mf-group"><label>Data de Pagamento</label><input type="date" id="pag-com-data"></div>
+        </div>
+        <div class="mf-row single">
+          <div class="mf-group"><label>Observações da Comissão</label><textarea id="opp-com-obs" rows="2" placeholder="Condições, referência..."></textarea></div>
+        </div>
       </div>
 
     </div>
@@ -942,6 +986,8 @@ function loadAll() {
     if (!o.subEtapasAprv)   o.subEtapasAprv = null;
     if (!o.subEtapasReun)   o.subEtapasReun = null;
     if (!o.statusMotivo)    o.statusMotivo = '';
+    if (!o.pagamento)           o.pagamento = {status:'pendente',data:'',obs:''};
+    if (!o.comissaoPagamento)   o.comissaoPagamento = {status:'pendente',data:''};
   });
 }
 
@@ -1158,7 +1204,7 @@ function showProcTab(tab) {
 
 // Modal inner tabs — moved to modal-head so never scrolls away
 function showInnerTab(tab) {
-  const tabs = ['dados','followup','documentos','aproveitamentos','historico','subetapas'];
+  const tabs = ['dados','followup','documentos','aproveitamentos','historico','subetapas','pagamentos'];
   document.querySelectorAll('#opp-inner-tabs .modal-inner-tab').forEach((b,i) => {
     b.classList.toggle('active', tabs[i]===tab);
   });
@@ -1172,6 +1218,7 @@ function showInnerTab(tab) {
   if (tab==='aproveitamentos') renderAprvTab();
   if (tab==='historico')       renderHistTab();
   if (tab==='subetapas')       renderSubEtapasTab();
+  if (tab==='pagamentos')      renderPagTab();
 }
 
 // PIPELINE filter
@@ -1429,7 +1476,7 @@ function makeCard(opp) {
       <span>👤 ${opp.responsavel}</span>
       ${getDiasBadge(opp)}
     </div>
-    ${opp.honorarios?`<div class="card-info-row"><span style="color:var(--text2)">Honorários</span><span class="val">${fmtBRL(opp.honorarios)}/mês</span></div>`:''}
+    ${(()=>{const pag=opp.pagamento||{}; const vaprv=(opp.valorAprovadoFiscal||0)+(opp.valorAprovadoPrevidenciario||0); if(!vaprv) return ''; const s=pag.status||'pendente'; const badge=s==='pago'?'✓ Pago':s==='parcial'?'½ Parcial':'💰 A receber'; const col=s==='pago'?'var(--green)':s==='parcial'?'var(--amber)':'var(--accent)'; return `<div class="card-info-row"><span style="color:var(--text2)">Aprovado</span><span style="color:${col};font-weight:700;font-size:12px">${fmtBRL(vaprv)} · ${badge}</span></div>`;})()}
     ${lastFu?`<div class="card-fu-info">${fuAlert?'⚠ ':'⏱ '}Follow-up: ${diasFu===0?'hoje':diasFu+'d atrás'}</div>`:'<div class="card-fu-info" style="color:var(--red);font-weight:600">⚠ Sem follow-up</div>'}`;
 
   const etapasOpp = getEtapasFor(opp.tipo);
@@ -1568,17 +1615,13 @@ function openNewOpp() {
   populateOrigemSelect();
   document.getElementById('opp-inner-tabs').style.display = 'none';
   document.getElementById('opp-edit-section').style.display = 'none';
-  document.getElementById('opp-financeiro-section').style.display = 'none';
-  if (currentUser.perfil==='Socio') {
-    document.getElementById('opp-comissao-section').style.display = '';
-    updateComResumo();
-  } else {
-    document.getElementById('opp-comissao-section').style.display = 'none';
-  }
   document.getElementById('btn-save-opp').style.display = '';
   document.getElementById('btn-declinar').style.display = 'none';
   const tabBtn = document.getElementById('tab-btn-subetapas');
   if (tabBtn) tabBtn.style.display = 'none';
+  const pagBtn = document.getElementById('tab-btn-pagamentos');
+  if (pagBtn) pagBtn.style.display = 'none';
+  document.getElementById('opp-canal-com-info').style.display = 'none';
   showInnerTab('dados');
   document.getElementById('modal-opp-overlay').classList.remove('hidden');
 }
@@ -1594,18 +1637,12 @@ function openOpp(id, startTab) {
   populateEtapaSelect(opp.tipo, opp.etapaId);
   fillOppForm(opp);
   document.getElementById('opp-edit-section').style.display = '';
-  document.getElementById('opp-financeiro-section').style.display = '';
-  if (currentUser.perfil==='Socio') {
-    document.getElementById('opp-comissao-section').style.display = '';
-    updateComResumo();
-  } else {
-    document.getElementById('opp-comissao-section').style.display = 'none';
-  }
   document.getElementById('btn-save-opp').style.display = '';
   document.getElementById('btn-declinar').style.display = opp.status==='inativo' ? 'none' : '';
-  // Sub-etapas: always visible when editing; tab initializes on demand
   const tabBtn = document.getElementById('tab-btn-subetapas');
   if (tabBtn) tabBtn.style.display = '';
+  const pagBtn = document.getElementById('tab-btn-pagamentos');
+  if (pagBtn) pagBtn.style.display = currentUser.perfil==='Socio' ? '' : 'none';
   const etapasOpp = getEtapasFor(opp.tipo);
   const thisEtapa2 = etapasOpp.find(e => e.id == opp.etapaId);
   const etapaName2 = thisEtapa2 ? thisEtapa2.nome.toLowerCase() : '';
@@ -1649,12 +1686,12 @@ function openOppEdit(id) { openOpp(id, 'dados'); }
 
 function clearOppForm() {
   ['opp-cliente','opp-cnpj','opp-email','opp-tel','opp-tel2','opp-resp','opp-notas','opp-indicado',
-   'opp-com-ben','opp-com-pct','opp-com-obs'].forEach(id => {
+   'opp-com-ben','opp-com-pct','opp-com-obs','opp-honor','opp-exito','pag-obs'].forEach(id => {
     const el=document.getElementById(id); if(el) el.value='';
   });
-  ['opp-honor','opp-exito'].forEach(id => {
-    const el=document.getElementById(id); if(el) el.value='';
-  });
+  ['pag-data','pag-com-data'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  const ps=document.getElementById('pag-status'); if(ps) ps.value='pendente';
+  const cs=document.getElementById('pag-com-status'); if(cs) cs.value='pendente';
   document.getElementById('opp-tipo').value='';
   const res=document.getElementById('opp-resultado'); if(res) res.value='';
   document.getElementById('opp-etapa').innerHTML='';
@@ -1681,9 +1718,23 @@ function fillOppForm(opp) {
   document.getElementById('opp-com-ben').value  = com.beneficiario||'';
   document.getElementById('opp-com-pct').value  = com.percentual||'';
   document.getElementById('opp-com-obs').value  = com.obs||'';
-  // collapse comissão form if already filled
-  const fw=document.getElementById('com-form-wrap');
-  if(fw) fw.style.display = (com.beneficiario||com.percentual) ? 'none' : '';
+  // pagamento
+  const pag = opp.pagamento||{};
+  const ps = document.getElementById('pag-status'); if(ps) ps.value = pag.status||'pendente';
+  const pd = document.getElementById('pag-data');   if(pd) pd.value = pag.data||'';
+  const po = document.getElementById('pag-obs');    if(po) po.value = pag.obs||'';
+  const cp = opp.comissaoPagamento||{};
+  const cs = document.getElementById('pag-com-status'); if(cs) cs.value = cp.status||'pendente';
+  const cd = document.getElementById('pag-com-data');   if(cd) cd.value = cp.data||'';
+  // canal info badge
+  const origemNome = opp.origem||'';
+  const canal = (config.canaisOrigem||[]).find(c=>c.nome===origemNome);
+  const infoEl = document.getElementById('opp-canal-com-info');
+  if (canal && (canal.comissaoBeneficiario||canal.comissaoPercentual) && infoEl) {
+    const txt = [canal.comissaoBeneficiario, canal.comissaoPercentual?canal.comissaoPercentual+'%':''].filter(Boolean).join(' · ');
+    document.getElementById('opp-canal-com-text').textContent = txt;
+    infoEl.style.display = '';
+  } else if (infoEl) { infoEl.style.display = 'none'; }
   populateEtapaSelect(opp.tipo, opp.etapaId);
 }
 
@@ -1711,20 +1762,22 @@ function populateExecutorSelect(selected) {
 }
 
 function onOrigemChange() {
-  if (currentUser.perfil!=='Socio') return;
   const origemNome = document.getElementById('opp-origem').value;
   const canal = (config.canaisOrigem||[]).find(c=>c.nome===origemNome);
-  if (!canal) return;
+  const infoEl  = document.getElementById('opp-canal-com-info');
+  const infoTxt = document.getElementById('opp-canal-com-text');
+  if (canal && (canal.comissaoBeneficiario||canal.comissaoPercentual)) {
+    const txt = [canal.comissaoBeneficiario, canal.comissaoPercentual ? canal.comissaoPercentual+'%' : ''].filter(Boolean).join(' · ');
+    if (infoTxt) infoTxt.textContent = txt;
+    if (infoEl)  infoEl.style.display = '';
+  } else {
+    if (infoEl) infoEl.style.display = 'none';
+  }
+  if (currentUser.perfil!=='Socio' || !canal) return;
   const benEl = document.getElementById('opp-com-ben');
   const pctEl = document.getElementById('opp-com-pct');
-  // only auto-fill if fields are currently empty
-  if (!benEl.value && canal.comissaoBeneficiario) benEl.value = canal.comissaoBeneficiario;
-  if (!pctEl.value && canal.comissaoPercentual)   pctEl.value = canal.comissaoPercentual;
-  // expand form so user sees auto-filled values
-  if (canal.comissaoBeneficiario||canal.comissaoPercentual) {
-    const fw=document.getElementById('com-form-wrap'); if(fw) fw.style.display='';
-  }
-  updateComResumo();
+  if (benEl && !benEl.value && canal.comissaoBeneficiario) benEl.value = canal.comissaoBeneficiario;
+  if (pctEl && !pctEl.value && canal.comissaoPercentual)   pctEl.value = canal.comissaoPercentual;
 }
 
 function toggleComissaoForm() {
@@ -1786,25 +1839,34 @@ function saveOpp() {
     opp.tel=document.getElementById('opp-tel').value.trim();
     opp.tel2=document.getElementById('opp-tel2').value.trim();
     opp.responsavel=resp; opp.tipo=tipo; opp.origem=origem; opp.indicado=indicado;
-    opp.honorarios=parseFloat(document.getElementById('opp-honor').value)||0;
-    opp.exito=parseFloat(document.getElementById('opp-exito').value)||0;
     opp.notas=document.getElementById('opp-notas').value.trim();
     opp.executor=document.getElementById('opp-executor').value;
     opp.resultadoLevantamento=(document.getElementById('opp-resultado')||{}).value||'';
     if (currentUser.perfil==='Socio') {
+      opp.honorarios=parseFloat(document.getElementById('opp-honor').value)||0;
+      opp.exito=parseFloat(document.getElementById('opp-exito').value)||0;
       if(!opp.comissao) opp.comissao={};
       opp.comissao.beneficiario=document.getElementById('opp-com-ben').value.trim();
       opp.comissao.percentual=parseFloat(document.getElementById('opp-com-pct').value)||0;
       opp.comissao.obs=document.getElementById('opp-com-obs').value.trim();
+      if(!opp.pagamento) opp.pagamento={};
+      opp.pagamento.status=document.getElementById('pag-status').value;
+      opp.pagamento.data=document.getElementById('pag-data').value;
+      opp.pagamento.obs=document.getElementById('pag-obs').value.trim();
+      if(!opp.comissaoPagamento) opp.comissaoPagamento={};
+      opp.comissaoPagamento.status=document.getElementById('pag-com-status').value;
+      opp.comissaoPagamento.data=document.getElementById('pag-com-data').value;
     }
     showNotif('Cliente atualizado!');
   } else {
     const etapaId = getEtapasFor(tipo)[0]?.id || 1;
-    const comissaoNova = currentUser.perfil==='Socio' ? {
-      beneficiario: document.getElementById('opp-com-ben').value.trim(),
-      percentual:   parseFloat(document.getElementById('opp-com-pct').value)||0,
-      obs:          document.getElementById('opp-com-obs').value.trim()
-    } : {beneficiario:'',percentual:0,obs:''};
+    // auto-fill comissão from canal config for new clients
+    const canalCfg = (config.canaisOrigem||[]).find(c=>c.nome===origem);
+    const comissaoNova = {
+      beneficiario: canalCfg?.comissaoBeneficiario||'',
+      percentual:   canalCfg?.comissaoPercentual||0,
+      obs:          ''
+    };
     const newOpp = {
       id:nextId(), cliente, cnpj:document.getElementById('opp-cnpj').value.trim(),
       email:document.getElementById('opp-email').value.trim(),
@@ -1814,9 +1876,9 @@ function saveOpp() {
       executor:'', resultadoLevantamento:'',
       valorLevantadoFiscal:0, valorLevantadoPrevidenciario:0,
       valorAprovadoFiscal:0, valorAprovadoPrevidenciario:0,
-      comissao: comissaoNova,
-      honorarios:0,
-      exito:parseFloat(document.getElementById('opp-exito').value)||0,
+      comissao: comissaoNova, honorarios:0, exito:0,
+      pagamento:{status:'pendente',data:'',obs:''},
+      comissaoPagamento:{status:'pendente',data:''},
       notas:document.getElementById('opp-notas').value.trim(),
       etapaId, followups:[], docs:{}, aproveitamentos:[],
       historico:[{tipo:'entrada',texto:'Cliente cadastrado',data:now,user:currentUser.nome}],
@@ -3109,6 +3171,40 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
   showApp();
   document.getElementById('xlsx-import-input').addEventListener('change', _onXlsxFile);
 })();
+
+// ============================================================
+// PAGAMENTOS
+// ============================================================
+function renderPagTab() {
+  const opp = opors.find(o=>o.id===editingOppId);
+  if (!opp) return;
+  const vlev  = (opp.valorLevantadoFiscal||0) + (opp.valorLevantadoPrevidenciario||0);
+  const vaprv = (opp.valorAprovadoFiscal||0)  + (opp.valorAprovadoPrevidenciario||0);
+  const exito = opp.exito||0;
+  const honor = opp.honorarios||0;
+  const vrec  = vaprv * exito / 100 + honor;
+  const comPct = (opp.comissao||{}).percentual||0;
+  const vcom  = vaprv * comPct / 100;
+  const fmt = v => v>0 ? 'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
+  const el = id => document.getElementById(id);
+  if(el('pag-vlev'))    el('pag-vlev').textContent    = fmt(vlev);
+  if(el('pag-vaprv'))   el('pag-vaprv').textContent   = fmt(vaprv);
+  if(el('pag-vrec'))    el('pag-vrec').textContent    = fmt(vrec);
+  if(el('pag-com-val')) el('pag-com-val').textContent = fmt(vcom);
+  // re-calc on input change
+  ['opp-exito','opp-honor','opp-com-pct'].forEach(id => {
+    const input = el(id);
+    if (!input || input._pagListener) return;
+    input._pagListener = true;
+    input.addEventListener('input', () => {
+      const ex = parseFloat(el('opp-exito')?.value)||0;
+      const ho = parseFloat(el('opp-honor')?.value)||0;
+      const cp = parseFloat(el('opp-com-pct')?.value)||0;
+      if(el('pag-vrec'))    el('pag-vrec').textContent    = fmt(vaprv*ex/100+ho);
+      if(el('pag-com-val')) el('pag-com-val').textContent = fmt(vaprv*cp/100);
+    });
+  });
+}
 
 // ============================================================
 // IMPORTAR EXCEL
