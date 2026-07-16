@@ -427,7 +427,7 @@ tr:hover td{background:var(--bg)}
 .comp-modal-overlay{overflow-y:auto;align-items:flex-start;padding:30px 20px}
 .comp-modal-head{padding:16px 22px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
 .comp-modal-body{padding:18px 22px 22px}
-.comp-split-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:8px}
+.comp-split-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:8px}
 .comp-warn{padding:8px 12px;background:#fef3c7;border-radius:7px;font-size:12px;color:#92400e;font-weight:600;margin-bottom:10px}
 
 /* Relatório */
@@ -988,25 +988,38 @@ tr:hover td{background:var(--bg)}
       </div>
       <div id="comp-warn-aprv" class="comp-warn" style="display:none"></div>
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin:14px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border)">Distribuição do Líquido</div>
+      <!-- Linha 1: percentuais -->
       <div class="comp-split-row">
-        <div class="mf-group">
-          <label>BIDATX R$</label>
-          <input type="number" id="comp-bidatx" step="0.01" placeholder="0,00" oninput="updateSplitPct()">
-          <div style="font-size:11px;color:var(--navy);font-weight:600;margin-top:3px" id="comp-bidatx-pct">—</div>
+        <div>
+          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:5px;color:var(--text)">BIDATX %</label>
+          <input type="number" id="comp-pct-bidatx" step="0.01" min="0" max="100" placeholder="0,00" oninput="updateSplitVals()" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;background:var(--white);color:var(--text)">
         </div>
-        <div class="mf-group">
-          <label>GBLCOM R$</label>
-          <input type="number" id="comp-gblcom" step="0.01" placeholder="0,00" oninput="updateSplitPct()">
-          <div style="font-size:11px;color:var(--navy);font-weight:600;margin-top:3px" id="comp-gblcom-pct">—</div>
-          <div style="font-size:10px;color:var(--text2);margin-top:2px" id="comp-gblcom-split">—</div>
+        <div>
+          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:5px;color:var(--text)">GBLCOM %</label>
+          <input type="number" id="comp-pct-gblcom" step="0.01" min="0" max="100" placeholder="0,00" oninput="updateSplitVals()" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;background:var(--white);color:var(--text)">
         </div>
-        <div class="mf-group">
-          <label id="comp-canal-label">Canal R$</label>
-          <input type="number" id="comp-canal" step="0.01" placeholder="0,00" oninput="updateSplitPct()">
-          <div style="font-size:11px;color:var(--navy);font-weight:600;margin-top:3px" id="comp-canal-pct">—</div>
+        <div>
+          <label id="comp-canal-label" style="font-size:12px;font-weight:600;display:block;margin-bottom:5px;color:var(--text)">Canal %</label>
+          <input type="number" id="comp-pct-canal" step="0.01" min="0" max="100" placeholder="0,00" oninput="updateSplitVals()" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;background:var(--white);color:var(--text)">
         </div>
       </div>
-      <div id="comp-split-warn" style="font-size:12px;color:var(--red);margin-bottom:10px;display:none">⚠ BIDATX + GBLCOM + Canal ≠ Total Líquido</div>
+      <!-- Linha 2: valores calculados -->
+      <div class="comp-split-row" style="background:var(--bg);border-radius:8px;padding:10px 12px;margin-bottom:4px">
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;margin-bottom:3px">BIDATX R$</div>
+          <div id="comp-val-bidatx" style="font-size:13px;font-weight:700;color:var(--navy)">—</div>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;margin-bottom:3px">GBLCOM R$</div>
+          <div id="comp-val-gblcom" style="font-size:13px;font-weight:700">—</div>
+          <div id="comp-gblcom-split" style="font-size:10px;color:var(--text2);margin-top:2px">—</div>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;margin-bottom:3px">Canal R$</div>
+          <div id="comp-val-canal" style="font-size:13px;font-weight:700">—</div>
+        </div>
+      </div>
+      <div id="comp-split-warn" style="font-size:12px;color:var(--red);margin-bottom:10px;display:none">⚠ Soma dos % ≠ 100%</div>
       <div class="mf-row" style="align-items:flex-end">
         <div class="mf-group" style="flex:0 0 auto">
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600">
@@ -3860,18 +3873,19 @@ function openCompModal(oppId, compId) {
     document.getElementById('comp-impostos').value = pctEdit;
     document.getElementById('comp-liquido').value  = ((comp.totalBruto||0) - impEdit).toFixed(2);
     document.getElementById('comp-impostos-val').textContent = '= ' + (impEdit > 0 ? fmtBRL(impEdit) : 'R$ 0,00');
-    document.getElementById('comp-bidatx').value   = comp.valorBidatx ? comp.valorBidatx.toFixed(2) : '';
-    document.getElementById('comp-gblcom').value   = comp.valorGblcom ? comp.valorGblcom.toFixed(2) : '';
-    document.getElementById('comp-canal').value    = comp.valorCanal  ? comp.valorCanal.toFixed(2)  : '';
+    const liqEdit = (comp.totalBruto||0) - impEdit;
+    document.getElementById('comp-pct-bidatx').value = comp.pctBidatx != null ? comp.pctBidatx.toFixed(2) : (liqEdit > 0 && comp.valorBidatx ? (comp.valorBidatx/liqEdit*100).toFixed(2) : '');
+    document.getElementById('comp-pct-gblcom').value = comp.pctGblcom != null ? comp.pctGblcom.toFixed(2) : (liqEdit > 0 && comp.valorGblcom ? (comp.valorGblcom/liqEdit*100).toFixed(2) : '');
+    document.getElementById('comp-pct-canal').value  = comp.pctCanal  != null ? comp.pctCanal.toFixed(2)  : (liqEdit > 0 && comp.valorCanal  ? (comp.valorCanal/liqEdit*100).toFixed(2)  : '');
     document.getElementById('comp-pago').checked   = comp.pago || false;
     document.getElementById('comp-data-pag').value = comp.dataPagamento || '';
     document.getElementById('comp-obs').value      = comp.obs || '';
     document.getElementById('comp-data-pag-wrap').style.display = comp.pago ? '' : 'none';
     onCompOppChange(oppId);
-    updateSplitPct();
+    updateSplitVals();
   } else {
     document.getElementById('comp-modal-title').textContent = 'Nova Compensação';
-    ['comp-bruto','comp-bidatx','comp-gblcom','comp-canal','comp-obs'].forEach(id => { document.getElementById(id).value = ''; });
+    ['comp-bruto','comp-pct-bidatx','comp-pct-gblcom','comp-pct-canal','comp-obs'].forEach(id => { document.getElementById(id).value = ''; });
     document.getElementById('comp-impostos').value = 0;
     document.getElementById('comp-impostos-val').textContent = '= R$ 0,00';
     document.getElementById('comp-liquido').value  = '';
@@ -3879,9 +3893,9 @@ function openCompModal(oppId, compId) {
     document.getElementById('comp-pago').checked   = false;
     document.getElementById('comp-data-pag').value = '';
     document.getElementById('comp-data-pag-wrap').style.display = 'none';
-    document.getElementById('comp-bidatx-pct').textContent  = '—';
-    document.getElementById('comp-gblcom-pct').textContent  = '—';
-    document.getElementById('comp-canal-pct').textContent   = '—';
+    document.getElementById('comp-val-bidatx').textContent  = '—';
+    document.getElementById('comp-val-gblcom').textContent  = '—';
+    document.getElementById('comp-val-canal').textContent   = '—';
     document.getElementById('comp-gblcom-split').textContent = '—';
     if (oppId) { sel.value = oppId; onCompOppChange(oppId); }
     else document.getElementById('comp-numero').value = 1;
@@ -3896,7 +3910,7 @@ function onCompOppChange(prefillOppId) {
 
   // Label do canal com nome da origem
   const canalNome = opp.origem || '';
-  document.getElementById('comp-canal-label').textContent = `Canal R$${canalNome ? ' (' + canalNome + ')' : ''}`;
+  document.getElementById('comp-canal-label').textContent = `Canal %${canalNome ? ' (' + canalNome + ')' : ''}`;
 
   // Próximo número automático se for nova
   if (!editingCompId) {
@@ -3936,18 +3950,20 @@ function calcCompLiquido() {
   updateSplitPct();
 }
 
-function updateSplitPct() {
-  const liq    = parseFloat(document.getElementById('comp-liquido').value) || 0;
-  const bidatx = parseFloat(document.getElementById('comp-bidatx').value) || 0;
-  const gblcom = parseFloat(document.getElementById('comp-gblcom').value) || 0;
-  const canal  = parseFloat(document.getElementById('comp-canal').value)  || 0;
-  const pct = v => liq > 0 ? (v / liq * 100).toFixed(1) + '%' : '—';
-  document.getElementById('comp-bidatx-pct').textContent  = pct(bidatx);
-  document.getElementById('comp-gblcom-pct').textContent  = pct(gblcom);
-  document.getElementById('comp-canal-pct').textContent   = pct(canal);
-  document.getElementById('comp-gblcom-split').textContent = gblcom > 0 ? `Bruno/Diego/Vick: ${fmtBRL(gblcom/3)} cada` : '—';
-  const diff = Math.abs(bidatx + gblcom + canal - liq);
-  document.getElementById('comp-split-warn').style.display = (liq > 0 && diff > 0.05) ? '' : 'none';
+function updateSplitVals() {
+  const liq     = parseFloat(document.getElementById('comp-liquido').value) || 0;
+  const pBidatx = parseFloat(document.getElementById('comp-pct-bidatx').value) || 0;
+  const pGblcom = parseFloat(document.getElementById('comp-pct-gblcom').value) || 0;
+  const pCanal  = parseFloat(document.getElementById('comp-pct-canal').value)  || 0;
+  const vBidatx = liq * pBidatx / 100;
+  const vGblcom = liq * pGblcom / 100;
+  const vCanal  = liq * pCanal  / 100;
+  document.getElementById('comp-val-bidatx').textContent = liq > 0 ? fmtBRL(vBidatx) : '—';
+  document.getElementById('comp-val-gblcom').textContent = liq > 0 ? fmtBRL(vGblcom) : '—';
+  document.getElementById('comp-val-canal').textContent  = liq > 0 ? fmtBRL(vCanal)  : '—';
+  document.getElementById('comp-gblcom-split').textContent = vGblcom > 0 ? `Bruno/Diego/Vick: ${fmtBRL(vGblcom/3)} cada` : '—';
+  const soma = pBidatx + pGblcom + pCanal;
+  document.getElementById('comp-split-warn').style.display = (soma > 0 && Math.abs(soma - 100) > 0.05) ? '' : 'none';
 }
 
 function toggleCompPagoField() {
@@ -3964,9 +3980,13 @@ function saveComp() {
   const bruto  = parseFloat(document.getElementById('comp-bruto').value);
   const impostoPct = parseFloat(document.getElementById('comp-impostos').value) || 0;
   const imp    = bruto * impostoPct / 100;
-  const bidatx = parseFloat(document.getElementById('comp-bidatx').value) || 0;
-  const gblcom = parseFloat(document.getElementById('comp-gblcom').value) || 0;
-  const canal  = parseFloat(document.getElementById('comp-canal').value)  || 0;
+  const liq    = bruto - imp;
+  const pctBidatx = parseFloat(document.getElementById('comp-pct-bidatx').value) || 0;
+  const pctGblcom = parseFloat(document.getElementById('comp-pct-gblcom').value) || 0;
+  const pctCanal  = parseFloat(document.getElementById('comp-pct-canal').value)  || 0;
+  const bidatx = liq * pctBidatx / 100;
+  const gblcom = liq * pctGblcom / 100;
+  const canal  = liq * pctCanal  / 100;
   const pago   = document.getElementById('comp-pago').checked;
   const dataPag= document.getElementById('comp-data-pag').value;
   const obs    = document.getElementById('comp-obs').value.trim();
@@ -3985,12 +4005,12 @@ function saveComp() {
   if (editingCompId) {
     const comp = opp.compensacoes.find(c => c.id === editingCompId);
     if (comp) Object.assign(comp, { numero, data, totalBruto: bruto, impostoPct, impostos: imp,
-      valorBidatx: bidatx, valorGblcom: gblcom, valorCanal: canal,
+      pctBidatx, pctGblcom, pctCanal, valorBidatx: bidatx, valorGblcom: gblcom, valorCanal: canal,
       canalNome, pago, dataPagamento: dataPag, obs });
   } else {
     const newId = opp.compensacoes.length ? Math.max(...opp.compensacoes.map(c => c.id)) + 1 : 1;
     opp.compensacoes.push({ id: newId, numero, data, totalBruto: bruto, impostoPct, impostos: imp,
-      valorBidatx: bidatx, valorGblcom: gblcom, valorCanal: canal,
+      pctBidatx, pctGblcom, pctCanal, valorBidatx: bidatx, valorGblcom: gblcom, valorCanal: canal,
       canalNome, pago, dataPagamento: dataPag, obs });
   }
 
