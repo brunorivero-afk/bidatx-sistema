@@ -986,7 +986,13 @@ tr:hover td{background:var(--bg)}
           <input type="text" id="comp-liquido" readonly style="background:var(--bg);color:var(--text2)">
         </div>
       </div>
+      <div style="margin:4px 0 12px">
+        <label id="comp-sem-resultado-wrap" style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;font-size:13px;padding:5px 12px;border-radius:8px;border:1.5px solid var(--border);color:var(--text2);user-select:none">
+          <input type="checkbox" id="comp-sem-resultado" onchange="toggleSemResultado()"> Não houve resultado
+        </label>
+      </div>
       <div id="comp-warn-aprv" class="comp-warn" style="display:none"></div>
+      <div id="comp-dist-section">
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin:14px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border)">Distribuição do Líquido</div>
       <!-- Linha 1: percentuais -->
       <div class="comp-split-row">
@@ -1020,6 +1026,7 @@ tr:hover td{background:var(--bg)}
         </div>
       </div>
       <div id="comp-split-warn" style="font-size:12px;color:var(--red);margin-bottom:10px;display:none">⚠ Soma dos % ≠ 100%</div>
+      </div><!-- /comp-dist-section -->
       <div class="mf-row" style="align-items:flex-end">
         <div class="mf-group" style="flex:0 0 auto">
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600">
@@ -2983,8 +2990,8 @@ function renderDashFin() {
     return true;
   });
 
-  // A receber (pago: false) — sem filtro de data
-  const aRecComps = allComps.filter(c => !c.pago);
+  // A receber (pago: false, sem resultado) — sem filtro de data
+  const aRecComps = allComps.filter(c => !c.pago && !c.semResultado);
 
   const getLiq = c => (c.totalBruto||0) * (1 - (c.impostoPct||0)/100);
 
@@ -2999,6 +3006,7 @@ function renderDashFin() {
     const id = c.opp.id;
     if (!oppMap.has(id)) oppMap.set(id, {aberto:false,fechado:false});
     const e = oppMap.get(id);
+    if (c.semResultado) { e.fechado = true; return; }
     if (!c.pago) e.aberto = true; else e.fechado = true;
   });
   let compensando = 0, compensado = 0;
@@ -3979,15 +3987,19 @@ function renderFinTable() {
       <td style="font-size:12px">${comp.canalNome||'—'}</td>
       <td style="font-size:14px;font-weight:700;color:var(--navy);text-align:center">${comp.numero}ª</td>
       <td style="font-size:12px">${comp.data ? fmtDateShort(comp.data) : '—'}</td>
-      <td style="font-size:12px;font-weight:600">${fmtBRL(comp.totalBruto||0)}</td>
-      <td style="font-size:12px;color:var(--red)">${fmtInputPct(comp.impostoPct||0)}%<br><small style="color:var(--text2)">${fmtBRL(comp.impostos||0)}</small></td>
-      <td style="font-size:12px;font-weight:700">${fmtBRL(liq)}</td>
-      <td style="font-size:12px;color:var(--navy);font-weight:600">${fmtBRL(comp.valorBidatx||0)}</td>
-      <td style="font-size:12px">${fmtBRL(comp.valorGblcom||0)}<br><small style="color:var(--text2)">${fmtBRL((comp.valorGblcom||0)/3)} cada</small></td>
-      <td style="font-size:12px">${fmtBRL(comp.valorCanal||0)}</td>
-      <td>${comp.pago
-        ? '<span class="comp-status-pago">✅ Pago</span>'
-        : '<span class="comp-status-pend">⏳ Pendente</span>'}</td>
+      <td style="font-size:12px;font-weight:600">${comp.semResultado
+        ? '<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;background:#fef2f2;color:var(--red)">Sem resultado</span>'
+        : fmtBRL(comp.totalBruto||0)}</td>
+      <td style="font-size:12px;color:var(--red)">${comp.semResultado ? '—' : fmtInputPct(comp.impostoPct||0)+'%<br><small style="color:var(--text2)">'+fmtBRL(comp.impostos||0)+'</small>'}</td>
+      <td style="font-size:12px;font-weight:700">${comp.semResultado ? '—' : fmtBRL(liq)}</td>
+      <td style="font-size:12px;color:var(--navy);font-weight:600">${comp.semResultado ? '—' : fmtBRL(comp.valorBidatx||0)}</td>
+      <td style="font-size:12px">${comp.semResultado ? '—' : fmtBRL(comp.valorGblcom||0)+'<br><small style="color:var(--text2)">'+fmtBRL((comp.valorGblcom||0)/3)+' cada</small>'}</td>
+      <td style="font-size:12px">${comp.semResultado ? '—' : fmtBRL(comp.valorCanal||0)}</td>
+      <td>${comp.semResultado
+        ? '<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;background:#fef2f2;color:var(--red)">Sem resultado</span>'
+        : comp.pago
+          ? '<span class="comp-status-pago">✅ Pago</span>'
+          : '<span class="comp-status-pend">⏳ Pendente</span>'}</td>
       <td style="white-space:nowrap">
         <button onclick="openCompModal(${opp.id},${comp.id})" style="font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--white);color:var(--navy);cursor:pointer;margin-right:4px">Editar</button>
         <button onclick="deleteComp(${opp.id},${comp.id})" style="font-size:11px;padding:3px 8px;border:1px solid var(--red);border-radius:5px;background:var(--red-bg);color:var(--red);cursor:pointer">×</button>
@@ -4037,6 +4049,8 @@ function openCompModal(oppId, compId) {
     document.getElementById('comp-data-pag').value = comp.dataPagamento || '';
     document.getElementById('comp-obs').value      = comp.obs || '';
     document.getElementById('comp-data-pag-wrap').style.display = comp.pago ? '' : 'none';
+    document.getElementById('comp-sem-resultado').checked = comp.semResultado || false;
+    toggleSemResultado();
     onCompOppChange(oppId);
     updateSplitVals();
   } else {
@@ -4049,6 +4063,8 @@ function openCompModal(oppId, compId) {
     document.getElementById('comp-pago').checked   = false;
     document.getElementById('comp-data-pag').value = '';
     document.getElementById('comp-data-pag-wrap').style.display = 'none';
+    document.getElementById('comp-sem-resultado').checked = false;
+    toggleSemResultado();
     document.getElementById('comp-val-bidatx').textContent  = '—';
     document.getElementById('comp-val-gblcom').textContent  = '—';
     document.getElementById('comp-val-canal').textContent   = '—';
@@ -4129,17 +4145,39 @@ function toggleCompPagoField() {
     document.getElementById('comp-data-pag').value = new Date().toISOString().slice(0,10);
 }
 
+function toggleSemResultado() {
+  const checked = document.getElementById('comp-sem-resultado').checked;
+  const wrap = document.getElementById('comp-sem-resultado-wrap');
+  const dist = document.getElementById('comp-dist-section');
+  if (wrap) {
+    wrap.style.color       = checked ? 'var(--red)' : 'var(--text2)';
+    wrap.style.borderColor = checked ? 'var(--red)' : 'var(--border)';
+    wrap.style.background  = checked ? '#fef2f2'   : '';
+  }
+  ['comp-bruto','comp-impostos'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.disabled = checked; if (checked) el.value = ''; }
+  });
+  if (checked) {
+    document.getElementById('comp-liquido').value = '';
+    document.getElementById('comp-impostos-val').textContent = '= R$ 0,00';
+    document.getElementById('comp-warn-aprv').style.display = 'none';
+  }
+  if (dist) dist.style.display = checked ? 'none' : '';
+}
+
 function saveComp() {
   const oppId  = parseInt(document.getElementById('comp-opp').value);
   const numero = parseInt(document.getElementById('comp-numero').value) || 1;
   const data   = document.getElementById('comp-data').value;
-  const bruto  = unmaskBRL(document.getElementById('comp-bruto').value);
-  const impostoPct = unmaskBRL(document.getElementById('comp-impostos').value) || 0;
+  const semResultado = document.getElementById('comp-sem-resultado').checked;
+  const bruto  = semResultado ? 0 : unmaskBRL(document.getElementById('comp-bruto').value);
+  const impostoPct = semResultado ? 0 : (unmaskBRL(document.getElementById('comp-impostos').value) || 0);
   const imp    = bruto * impostoPct / 100;
   const liq    = bruto - imp;
-  const pctBidatx = unmaskBRL(document.getElementById('comp-pct-bidatx').value) || 0;
-  const pctGblcom = unmaskBRL(document.getElementById('comp-pct-gblcom').value) || 0;
-  const pctCanal  = unmaskBRL(document.getElementById('comp-pct-canal').value)  || 0;
+  const pctBidatx = semResultado ? 0 : (unmaskBRL(document.getElementById('comp-pct-bidatx').value) || 0);
+  const pctGblcom = semResultado ? 0 : (unmaskBRL(document.getElementById('comp-pct-gblcom').value) || 0);
+  const pctCanal  = semResultado ? 0 : (unmaskBRL(document.getElementById('comp-pct-canal').value)  || 0);
   const bidatx = liq * pctBidatx / 100;
   const gblcom = liq * pctGblcom / 100;
   const canal  = liq * pctCanal  / 100;
@@ -4150,7 +4188,7 @@ function saveComp() {
   let ok = true;
   if (!oppId) { document.getElementById('err-comp-opp').textContent = 'Selecione um cliente'; ok = false; }
   else document.getElementById('err-comp-opp').textContent = '';
-  if (isNaN(bruto) || bruto <= 0) { document.getElementById('err-comp-bruto').textContent = 'Informe o valor bruto'; ok = false; }
+  if (!semResultado && (isNaN(bruto) || bruto <= 0)) { document.getElementById('err-comp-bruto').textContent = 'Informe o valor bruto'; ok = false; }
   else document.getElementById('err-comp-bruto').textContent = '';
   if (!ok) return;
 
@@ -4162,12 +4200,12 @@ function saveComp() {
     const comp = opp.compensacoes.find(c => c.id === editingCompId);
     if (comp) Object.assign(comp, { numero, data, totalBruto: bruto, impostoPct, impostos: imp,
       pctBidatx, pctGblcom, pctCanal, valorBidatx: bidatx, valorGblcom: gblcom, valorCanal: canal,
-      canalNome, pago, dataPagamento: dataPag, obs });
+      canalNome, pago, dataPagamento: dataPag, obs, semResultado });
   } else {
     const newId = opp.compensacoes.length ? Math.max(...opp.compensacoes.map(c => c.id)) + 1 : 1;
     opp.compensacoes.push({ id: newId, numero, data, totalBruto: bruto, impostoPct, impostos: imp,
       pctBidatx, pctGblcom, pctCanal, valorBidatx: bidatx, valorGblcom: gblcom, valorCanal: canal,
-      canalNome, pago, dataPagamento: dataPag, obs });
+      canalNome, pago, dataPagamento: dataPag, obs, semResultado });
   }
 
   saveOpors();
