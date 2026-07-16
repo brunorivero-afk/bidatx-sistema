@@ -626,7 +626,7 @@ tr:hover td{background:var(--bg)}
             <div class="config-section-body">
               <div class="cfg-field">
                 <label>Meta em R$</label>
-                <input type="number" id="cfg-meta" placeholder="300000" min="0" step="0.01">
+                <input type="text" id="cfg-meta" placeholder="300.000,00" oninput="maskBRL(this)">
                 <button class="btn-save" onclick="saveMeta()">Salvar</button>
               </div>
             </div>
@@ -859,7 +859,7 @@ tr:hover td{background:var(--bg)}
               </select>
             </div>
           </div>
-          <div class="mf-group" style="margin-bottom:8px"><label>Valor (R$)</label><input type="number" id="aprv-valor" min="0" step="100" placeholder="0"></div>
+          <div class="mf-group" style="margin-bottom:8px"><label>Valor (R$)</label><input type="text" id="aprv-valor" placeholder="0,00" oninput="maskBRL(this)"></div>
           <div class="mf-group" style="margin-bottom:10px"><label>Observações</label><textarea id="aprv-obs" rows="2" placeholder="Referência, DARF, competência..."></textarea></div>
           <button class="btn-confirm" style="width:auto" onclick="saveAprv()">Salvar</button>
           <button class="btn-cancel" style="margin-left:6px" onclick="toggleAprvForm()">Cancelar</button>
@@ -869,8 +869,8 @@ tr:hover td{background:var(--bg)}
         <div id="pag-socio-section" style="display:none">
           <div class="mf-section-label" style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px">Honorários</div>
           <div class="mf-row">
-            <div class="mf-group"><label>% de Êxito (sucesso)</label><input id="opp-exito" type="number" min="0" max="100" step="0.5" placeholder="ex: 25"></div>
-            <div class="mf-group"><label>Honorários Fixos (R$)</label><input id="opp-honor" type="number" min="0" step="100" placeholder="0"></div>
+            <div class="mf-group"><label>% de Êxito (sucesso)</label><input id="opp-exito" type="text" placeholder="ex: 25,00"></div>
+            <div class="mf-group"><label>Honorários Fixos (R$)</label><input id="opp-honor" type="text" placeholder="0,00" oninput="maskBRL(this)"></div>
           </div>
           <div class="pag-kpi-row" id="pag-kpi-row">
             <div class="pag-kpi"><div class="pag-kpi-label">Valor Levantado</div><div class="pag-kpi-val" id="pag-vlev">—</div></div>
@@ -894,7 +894,7 @@ tr:hover td{background:var(--bg)}
           <div class="mf-section-label" style="margin-top:16px">Comissão Parceiro</div>
           <div class="mf-row">
             <div class="mf-group"><label>Beneficiário</label><input id="opp-com-ben" type="text" placeholder="Nome do indicador/parceiro"></div>
-            <div class="mf-group"><label>Percentual (%)</label><input id="opp-com-pct" type="number" min="0" max="100" step="0.5" placeholder="0"></div>
+            <div class="mf-group"><label>Percentual (%)</label><input id="opp-com-pct" type="text" placeholder="0,00"></div>
           </div>
           <div class="pag-com-box">
             <div>
@@ -975,15 +975,15 @@ tr:hover td{background:var(--bg)}
       </div>
       <div class="mf-row">
         <div class="mf-group" style="flex:1 1 140px"><label>Total Bruto R$ *</label>
-          <input type="number" id="comp-bruto" step="0.01" placeholder="0,00" oninput="calcCompLiquido()">
+          <input type="text" id="comp-bruto" placeholder="0,00" oninput="maskBRL(this);calcCompLiquido()">
           <div class="field-error" id="err-comp-bruto"></div>
         </div>
         <div class="mf-group" style="flex:1 1 130px"><label>Impostos %</label>
-          <input type="number" id="comp-impostos" step="0.01" min="0" max="100" value="0" placeholder="0,00" oninput="calcCompLiquido()">
+          <input type="text" id="comp-impostos" placeholder="0,00" oninput="calcCompLiquido()">
           <div style="font-size:11px;color:var(--text2);margin-top:3px" id="comp-impostos-val">= R$ 0,00</div>
         </div>
         <div class="mf-group" style="flex:1 1 130px"><label>Total Líquido R$</label>
-          <input type="number" id="comp-liquido" step="0.01" readonly style="background:var(--bg);color:var(--text2)">
+          <input type="text" id="comp-liquido" readonly style="background:var(--bg);color:var(--text2)">
         </div>
       </div>
       <div id="comp-warn-aprv" class="comp-warn" style="display:none"></div>
@@ -992,15 +992,15 @@ tr:hover td{background:var(--bg)}
       <div class="comp-split-row">
         <div>
           <label style="font-size:12px;font-weight:600;display:block;margin-bottom:5px;color:var(--text)">BIDATX %</label>
-          <input type="number" id="comp-pct-bidatx" step="0.01" min="0" max="100" placeholder="0,00" oninput="updateSplitVals()" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;background:var(--white);color:var(--text)">
+          <input type="text" id="comp-pct-bidatx" placeholder="0,00" oninput="updateSplitVals()" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;background:var(--white);color:var(--text)">
         </div>
         <div>
           <label style="font-size:12px;font-weight:600;display:block;margin-bottom:5px;color:var(--text)">GBLCOM %</label>
-          <input type="number" id="comp-pct-gblcom" step="0.01" min="0" max="100" placeholder="0,00" oninput="updateSplitVals()" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;background:var(--white);color:var(--text)">
+          <input type="text" id="comp-pct-gblcom" placeholder="0,00" oninput="updateSplitVals()" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;background:var(--white);color:var(--text)">
         </div>
         <div>
           <label id="comp-canal-label" style="font-size:12px;font-weight:600;display:block;margin-bottom:5px;color:var(--text)">Canal %</label>
-          <input type="number" id="comp-pct-canal" step="0.01" min="0" max="100" placeholder="0,00" oninput="updateSplitVals()" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;background:var(--white);color:var(--text)">
+          <input type="text" id="comp-pct-canal" placeholder="0,00" oninput="updateSplitVals()" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;background:var(--white);color:var(--text)">
         </div>
       </div>
       <!-- Linha 2: valores calculados -->
@@ -1451,6 +1451,34 @@ function setFunilFilter(filter, btn) {
 function fmtBRL(v) {
   if (v==null||v===''||v===0) return '—';
   return 'R$ ' + Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+// ── Máscaras numéricas ──────────────────────────────────────────
+function unmaskBRL(str) {
+  if (str===''||str==null) return 0;
+  return parseFloat(String(str).replace(/\./g,'').replace(',','.')) || 0;
+}
+function fmtInputBRL(val) {
+  if (val===''||val==null) return '';
+  const n = Number(val);
+  if (isNaN(n)) return '';
+  return n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function fmtInputPct(val) {
+  if (val===''||val==null) return '';
+  const n = Number(val);
+  if (isNaN(n)) return '';
+  return n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function maskBRL(input) {
+  let raw = input.value.replace(/\D/g,'');
+  if (!raw) { input.value=''; return; }
+  const n = parseInt(raw,10) / 100;
+  input.value = n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function maskPct(input) {
+  // permite digitar: dígitos e vírgula; formata ao sair do foco
+  let v = input.value.replace(/[^\d,]/g,'');
+  input.value = v;
 }
 function fmtDate(iso) {
   if (!iso) return '—';
@@ -1972,8 +2000,8 @@ function fillOppForm(opp) {
     l.classList.toggle('checked', checked);
     l.querySelector('input').checked = checked;
   });
-  document.getElementById('opp-honor').value    = opp.honorarios||'';
-  document.getElementById('opp-exito').value    = opp.exito||'';
+  document.getElementById('opp-honor').value    = opp.honorarios ? fmtInputBRL(opp.honorarios) : '';
+  document.getElementById('opp-exito').value    = opp.exito ? fmtInputPct(opp.exito) : '';
   document.getElementById('opp-notas').value    = opp.notas||'';
   document.getElementById('opp-indicado').value = opp.indicado||'';
   const res=document.getElementById('opp-resultado'); if(res) res.value=opp.resultadoLevantamento||'';
@@ -2040,7 +2068,7 @@ function onOrigemChange() {
   const benEl = document.getElementById('opp-com-ben');
   const pctEl = document.getElementById('opp-com-pct');
   if (benEl && !benEl.value && canal.comissaoBeneficiario) benEl.value = canal.comissaoBeneficiario;
-  if (pctEl && !pctEl.value && canal.comissaoPercentual)   pctEl.value = canal.comissaoPercentual;
+  if (pctEl && !pctEl.value && canal.comissaoPercentual)   pctEl.value = fmtInputPct(canal.comissaoPercentual);
 }
 
 function toggleComissaoForm() {
@@ -2122,11 +2150,11 @@ function saveOpp() {
     const etaSel = document.getElementById('opp-etapa');
     if (etaSel && etaSel.value && editingTipo) setOppEtapaId(opp, editingTipo, parseInt(etaSel.value));
     if (currentUser.perfil==='Socio') {
-      opp.honorarios=parseFloat(document.getElementById('opp-honor').value)||0;
-      opp.exito=parseFloat(document.getElementById('opp-exito').value)||0;
+      opp.honorarios=unmaskBRL(document.getElementById('opp-honor').value)||0;
+      opp.exito=unmaskBRL(document.getElementById('opp-exito').value)||0;
       if(!opp.comissao) opp.comissao={};
       opp.comissao.beneficiario=document.getElementById('opp-com-ben').value.trim();
-      opp.comissao.percentual=parseFloat(document.getElementById('opp-com-pct').value)||0;
+      opp.comissao.percentual=unmaskBRL(document.getElementById('opp-com-pct').value)||0;
       opp.comissao.obs=document.getElementById('opp-com-obs').value.trim();
       if(!opp.pagamento) opp.pagamento={};
       opp.pagamento.status=document.getElementById('pag-status').value;
@@ -2634,7 +2662,7 @@ function toggleAprvForm() {
 function saveAprv() {
   const data  = document.getElementById('aprv-data').value;
   const tipo  = document.getElementById('aprv-tipo').value;
-  const valor = parseFloat(document.getElementById('aprv-valor').value);
+  const valor = unmaskBRL(document.getElementById('aprv-valor').value);
   const obs   = document.getElementById('aprv-obs').value.trim();
   if (!data||!tipo||isNaN(valor)||valor<=0) { showNotif('Preencha data, tipo e valor','error'); return; }
   const opp = opors.find(o=>o.id===editingOppId); if(!opp) return;
@@ -2665,7 +2693,7 @@ function removeAprv(id) {
 // CONFIG
 // ============================================================
 function renderConfig() {
-  document.getElementById('cfg-meta').value    = (config.metaMensal||300000).toFixed(2);
+  document.getElementById('cfg-meta').value    = fmtInputBRL(config.metaMensal||300000);
   document.getElementById('cfg-fu-dias').value = config.fuDias||7;
   renderUsersConfig();
   renderConfigWA();
@@ -2930,7 +2958,7 @@ function renderDash() {
 }
 
 function saveMeta() {
-  const v=parseFloat(document.getElementById('cfg-meta').value);
+  const v=unmaskBRL(document.getElementById('cfg-meta').value);
   if(isNaN(v)||v<0){ showNotif('Valor inválido','error'); return; }
   config.metaMensal=v; saveConfig(); showNotif('Meta salva!');
 }
@@ -3150,7 +3178,7 @@ function renderConfigCanais() {
         </div>
         <div>
           <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:3px;text-transform:uppercase">% Comissão</div>
-          <input type="number" min="0" max="100" step="0.5" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-size:13px" value="${canal.comissaoPercentual||0}" onchange="updateCanalComissao(${canal.id},'percentual',parseFloat(this.value)||0)">
+          <input type="text" style="width:100%;padding:5px 8px;border:1px solid var(--border);border-radius:5px;font-size:13px" value="${fmtInputPct(canal.comissaoPercentual||0)}" oninput="maskPct(this)" onchange="updateCanalComissao(${canal.id},'percentual',unmaskBRL(this.value)||0)">
         </div>
       </div>`;
     list.appendChild(d);
@@ -3544,9 +3572,9 @@ function renderPagTab() {
     if (!input || input._pagListener) return;
     input._pagListener = true;
     input.addEventListener('input', () => {
-      const ex = parseFloat(el('opp-exito')?.value)||0;
-      const ho = parseFloat(el('opp-honor')?.value)||0;
-      const cp = parseFloat(el('opp-com-pct')?.value)||0;
+      const ex = unmaskBRL(el('opp-exito')?.value)||0;
+      const ho = unmaskBRL(el('opp-honor')?.value)||0;
+      const cp = unmaskBRL(el('opp-com-pct')?.value)||0;
       if(el('pag-vrec'))    el('pag-vrec').textContent    = fmt(vaprv*ex/100+ho);
       if(el('pag-com-val')) el('pag-com-val').textContent = fmt(vaprv*cp/100);
     });
@@ -3824,7 +3852,7 @@ function renderFinTable() {
       <td style="font-size:14px;font-weight:700;color:var(--navy);text-align:center">${comp.numero}ª</td>
       <td style="font-size:12px">${comp.data ? fmtDateShort(comp.data) : '—'}</td>
       <td style="font-size:12px;font-weight:600">${fmtBRL(comp.totalBruto||0)}</td>
-      <td style="font-size:12px;color:var(--red)">${(comp.impostoPct||0).toFixed(2)}%<br><small style="color:var(--text2)">${fmtBRL(comp.impostos||0)}</small></td>
+      <td style="font-size:12px;color:var(--red)">${fmtInputPct(comp.impostoPct||0)}%<br><small style="color:var(--text2)">${fmtBRL(comp.impostos||0)}</small></td>
       <td style="font-size:12px;font-weight:700">${fmtBRL(liq)}</td>
       <td style="font-size:12px;color:var(--navy);font-weight:600">${fmtBRL(comp.valorBidatx||0)}</td>
       <td style="font-size:12px">${fmtBRL(comp.valorGblcom||0)}<br><small style="color:var(--text2)">${fmtBRL((comp.valorGblcom||0)/3)} cada</small></td>
@@ -3869,14 +3897,14 @@ function openCompModal(oppId, compId) {
     const impEdit = (comp.totalBruto||0) * pctEdit / 100;
     document.getElementById('comp-numero').value   = comp.numero;
     document.getElementById('comp-data').value     = comp.data || '';
-    document.getElementById('comp-bruto').value    = comp.totalBruto ? comp.totalBruto.toFixed(2) : '';
-    document.getElementById('comp-impostos').value = pctEdit;
-    document.getElementById('comp-liquido').value  = ((comp.totalBruto||0) - impEdit).toFixed(2);
+    document.getElementById('comp-bruto').value    = comp.totalBruto ? fmtInputBRL(comp.totalBruto) : '';
+    document.getElementById('comp-impostos').value = fmtInputPct(pctEdit);
+    document.getElementById('comp-liquido').value  = fmtInputBRL((comp.totalBruto||0) - impEdit);
     document.getElementById('comp-impostos-val').textContent = '= ' + (impEdit > 0 ? fmtBRL(impEdit) : 'R$ 0,00');
     const liqEdit = (comp.totalBruto||0) - impEdit;
-    document.getElementById('comp-pct-bidatx').value = comp.pctBidatx != null ? comp.pctBidatx.toFixed(2) : (liqEdit > 0 && comp.valorBidatx ? (comp.valorBidatx/liqEdit*100).toFixed(2) : '');
-    document.getElementById('comp-pct-gblcom').value = comp.pctGblcom != null ? comp.pctGblcom.toFixed(2) : (liqEdit > 0 && comp.valorGblcom ? (comp.valorGblcom/liqEdit*100).toFixed(2) : '');
-    document.getElementById('comp-pct-canal').value  = comp.pctCanal  != null ? comp.pctCanal.toFixed(2)  : (liqEdit > 0 && comp.valorCanal  ? (comp.valorCanal/liqEdit*100).toFixed(2)  : '');
+    document.getElementById('comp-pct-bidatx').value = comp.pctBidatx != null ? fmtInputPct(comp.pctBidatx) : (liqEdit > 0 && comp.valorBidatx ? fmtInputPct(comp.valorBidatx/liqEdit*100) : '');
+    document.getElementById('comp-pct-gblcom').value = comp.pctGblcom != null ? fmtInputPct(comp.pctGblcom) : (liqEdit > 0 && comp.valorGblcom ? fmtInputPct(comp.valorGblcom/liqEdit*100) : '');
+    document.getElementById('comp-pct-canal').value  = comp.pctCanal  != null ? fmtInputPct(comp.pctCanal)  : (liqEdit > 0 && comp.valorCanal  ? fmtInputPct(comp.valorCanal/liqEdit*100)  : '');
     document.getElementById('comp-pago').checked   = comp.pago || false;
     document.getElementById('comp-data-pag').value = comp.dataPagamento || '';
     document.getElementById('comp-obs').value      = comp.obs || '';
@@ -3928,7 +3956,7 @@ function checkCompAprvWarn(oppId) {
   const outrasComps = (opp.compensacoes||[])
     .filter(c => !editingCompId || c.id !== editingCompId)
     .reduce((s, c) => s + (c.totalBruto||0), 0);
-  const thisVal = parseFloat(document.getElementById('comp-bruto').value) || 0;
+  const thisVal = unmaskBRL(document.getElementById('comp-bruto').value) || 0;
   const warn = document.getElementById('comp-warn-aprv');
   if ((outrasComps + thisVal) > totalAprv) {
     warn.style.display = '';
@@ -3939,11 +3967,11 @@ function checkCompAprvWarn(oppId) {
 }
 
 function calcCompLiquido() {
-  const bruto = parseFloat(document.getElementById('comp-bruto').value) || 0;
-  const pct   = parseFloat(document.getElementById('comp-impostos').value) || 0;
+  const bruto = unmaskBRL(document.getElementById('comp-bruto').value) || 0;
+  const pct   = unmaskBRL(document.getElementById('comp-impostos').value) || 0;
   const imp   = bruto * pct / 100;
   const liq   = bruto - imp;
-  document.getElementById('comp-liquido').value = liq.toFixed(2);
+  document.getElementById('comp-liquido').value = liq > 0 ? fmtInputBRL(liq) : '';
   document.getElementById('comp-impostos-val').textContent = '= ' + (imp > 0 ? fmtBRL(imp) : 'R$ 0,00');
   const oppId = parseInt(document.getElementById('comp-opp').value);
   if (oppId) checkCompAprvWarn(oppId);
@@ -3951,10 +3979,10 @@ function calcCompLiquido() {
 }
 
 function updateSplitVals() {
-  const liq     = parseFloat(document.getElementById('comp-liquido').value) || 0;
-  const pBidatx = parseFloat(document.getElementById('comp-pct-bidatx').value) || 0;
-  const pGblcom = parseFloat(document.getElementById('comp-pct-gblcom').value) || 0;
-  const pCanal  = parseFloat(document.getElementById('comp-pct-canal').value)  || 0;
+  const liq     = unmaskBRL(document.getElementById('comp-liquido').value) || 0;
+  const pBidatx = unmaskBRL(document.getElementById('comp-pct-bidatx').value) || 0;
+  const pGblcom = unmaskBRL(document.getElementById('comp-pct-gblcom').value) || 0;
+  const pCanal  = unmaskBRL(document.getElementById('comp-pct-canal').value)  || 0;
   const vBidatx = liq * pBidatx / 100;
   const vGblcom = liq * pGblcom / 100;
   const vCanal  = liq * pCanal  / 100;
@@ -3977,13 +4005,13 @@ function saveComp() {
   const oppId  = parseInt(document.getElementById('comp-opp').value);
   const numero = parseInt(document.getElementById('comp-numero').value) || 1;
   const data   = document.getElementById('comp-data').value;
-  const bruto  = parseFloat(document.getElementById('comp-bruto').value);
-  const impostoPct = parseFloat(document.getElementById('comp-impostos').value) || 0;
+  const bruto  = unmaskBRL(document.getElementById('comp-bruto').value);
+  const impostoPct = unmaskBRL(document.getElementById('comp-impostos').value) || 0;
   const imp    = bruto * impostoPct / 100;
   const liq    = bruto - imp;
-  const pctBidatx = parseFloat(document.getElementById('comp-pct-bidatx').value) || 0;
-  const pctGblcom = parseFloat(document.getElementById('comp-pct-gblcom').value) || 0;
-  const pctCanal  = parseFloat(document.getElementById('comp-pct-canal').value)  || 0;
+  const pctBidatx = unmaskBRL(document.getElementById('comp-pct-bidatx').value) || 0;
+  const pctGblcom = unmaskBRL(document.getElementById('comp-pct-gblcom').value) || 0;
+  const pctCanal  = unmaskBRL(document.getElementById('comp-pct-canal').value)  || 0;
   const bidatx = liq * pctBidatx / 100;
   const gblcom = liq * pctGblcom / 100;
   const canal  = liq * pctCanal  / 100;
