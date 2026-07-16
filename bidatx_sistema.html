@@ -400,6 +400,14 @@ tr:hover td{background:var(--bg)}
 .pag-com-box{background:#fef9ec;border:1px solid #f0d070;border-radius:8px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
 .pag-com-box-val{font-size:16px;font-weight:800;color:#92400e}
 .pag-status-badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700}
+.tipo-check-group{display:flex;flex-wrap:wrap;gap:7px;padding:5px 0}
+.tipo-check-item{display:flex;align-items:center;gap:5px;font-size:13px;font-weight:500;color:var(--text1);cursor:pointer;padding:5px 11px;border:1.5px solid var(--border);border-radius:6px;transition:all .15s;user-select:none}
+.tipo-check-item:hover{border-color:var(--accent);color:var(--accent)}
+.tipo-check-item.checked{border-color:var(--navy);background:var(--navy);color:#fff}
+.tipo-check-item input[type=checkbox]{display:none}
+.tipo-switcher-wrap{display:flex;gap:6px;flex-wrap:wrap;padding:6px 20px 8px;border-bottom:1px solid var(--border);background:var(--bg)}
+.tipo-switcher-btn{padding:4px 14px;border-radius:12px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:var(--white);color:var(--text2);cursor:pointer;transition:all .15s}
+.tipo-switcher-btn.active{background:var(--navy);border-color:var(--navy);color:#fff}
 .pag-badge-pendente{background:#fee2e2;color:var(--red)}
 .pag-badge-parcial{background:#fef3c7;color:var(--amber)}
 .pag-badge-pago{background:var(--green-bg);color:var(--green)}
@@ -683,6 +691,7 @@ tr:hover td{background:var(--bg)}
         <button class="modal-inner-tab" id="tab-btn-subetapas" style="display:none" onclick="showInnerTab('subetapas')">Sub-etapas</button>
         <button class="modal-inner-tab" id="tab-btn-pagamentos" style="display:none" onclick="showInnerTab('pagamentos')">💰 Pagamentos</button>
       </div>
+      <div class="tipo-switcher-wrap" id="opp-tipo-switcher" style="display:none"></div>
     </div>
     <div class="modal-body" id="modal-opp-body">
 
@@ -701,13 +710,15 @@ tr:hover td{background:var(--bg)}
           <div class="mf-group"><label>Telefone 2</label><input id="opp-tel2" type="text"></div>
         </div>
         <div class="mf-row">
-          <div class="mf-group"><label>Tipo de Processo *</label>
-            <select id="opp-tipo" onchange="onTipoChange()">
-              <option value="">Selecione</option>
-              <option>Previdenciário</option><option>Fiscal</option><option>Ambos</option>
-              <option>Consultoria</option><option>Transação Tributária</option>
-            </select><div class="field-error" id="err-tipo"></div></div>
-          <div class="mf-group"></div>
+          <div class="mf-group" style="flex:1 1 100%"><label>Tipo de Processo *</label>
+            <div class="tipo-check-group" id="tipo-check-group">
+              <label class="tipo-check-item" data-tipo="Fiscal" onclick="toggleTipoCheck(this)"><input type="checkbox" value="Fiscal"> Fiscal</label>
+              <label class="tipo-check-item" data-tipo="Previdenciário" onclick="toggleTipoCheck(this)"><input type="checkbox" value="Previdenciário"> Previdenciário</label>
+              <label class="tipo-check-item" data-tipo="Consultoria" onclick="toggleTipoCheck(this)"><input type="checkbox" value="Consultoria"> Consultoria</label>
+              <label class="tipo-check-item" data-tipo="Transação Tributária" onclick="toggleTipoCheck(this)"><input type="checkbox" value="Transação Tributária"> Transação Tributária</label>
+            </div>
+            <div class="field-error" id="err-tipo"></div>
+          </div>
         </div>
         <select id="opp-etapa" style="display:none"></select>
         <div class="mf-row">
@@ -923,11 +934,11 @@ let _sbUser = null;
 let _bidatxUsers = [];
 
 const TIPO_BADGE = {
-  'Previdenciário':'badge-prev','Fiscal':'badge-fisc','Ambos':'badge-ambos',
+  'Previdenciário':'badge-prev','Fiscal':'badge-fisc',
   'Consultoria':'badge-cons','Transação Tributária':'badge-trans'
 };
 const TIPO_CARD_CLASS = {
-  'Previdenciário':'card-tipo-prev','Fiscal':'card-tipo-fisc','Ambos':'card-tipo-ambos',
+  'Previdenciário':'card-tipo-prev','Fiscal':'card-tipo-fisc',
   'Consultoria':'card-tipo-cons','Transação Tributária':'card-tipo-trans'
 };
 
@@ -937,8 +948,25 @@ const TIPO_CARD_CLASS = {
 let currentUser  = null;
 let config       = null;
 let opors        = [];
-let editingOppId = null;
-let fuDias       = 7;
+let editingOppId  = null;
+let editingTipo   = null;
+let dragCardTipo  = null;
+let fuDias        = 7;
+
+// ── per-tipo accessors ────────────────────────────────────────
+function getOppEtapaId(opp,tipo){return (opp.etapasPorTipo||{})[tipo]||null;}
+function setOppEtapaId(opp,tipo,id){if(!opp.etapasPorTipo)opp.etapasPorTipo={};opp.etapasPorTipo[tipo]=id;}
+function getOppFollowups(opp,tipo){return (opp.followupsPorTipo||{})[tipo]||[];}
+function getOppDocs(opp,tipo){return (opp.docsPorTipo||{})[tipo]||{};}
+function getOppHistorico(opp,tipo){return (opp.historicoPorTipo||{})[tipo]||[];}
+function getOppEtapaEntrada(opp,tipo){return (opp.etapaEntradaPorTipo||{})[tipo]||{};}
+function getOppPrazos(opp,tipo){return (opp.prazosPorTipo||{})[tipo]||{};}
+function getOppSubEtapas(opp,tipo){return ((opp.subEtapasPorTipo||{})[tipo])||{lev:null,aprv:null,reun:null};}
+function setOppSubField(opp,tipo,key,val){
+  if(!opp.subEtapasPorTipo)opp.subEtapasPorTipo={};
+  if(!opp.subEtapasPorTipo[tipo])opp.subEtapasPorTipo[tipo]={lev:null,aprv:null,reun:null};
+  opp.subEtapasPorTipo[tipo][key]=val;
+}
 let currentFunilFilter = null;
 let activePipeEtapaId  = null;
 let ghostEl = null;
@@ -984,13 +1012,55 @@ function loadAll() {
     if (o.valorLevantadoPrevidenciario===undefined) o.valorLevantadoPrevidenciario = 0;
     if (o.valorAprovadoFiscal===undefined)          o.valorAprovadoFiscal = 0;
     if (o.valorAprovadoPrevidenciario===undefined)  o.valorAprovadoPrevidenciario = 0;
-    if (!o.status)          o.status = 'ativo';
-    if (!o.subEtapas)       o.subEtapas = null;
-    if (!o.subEtapasAprv)   o.subEtapasAprv = null;
-    if (!o.subEtapasReun)   o.subEtapasReun = null;
-    if (!o.statusMotivo)    o.statusMotivo = '';
+    if (!o.status)        o.status = 'ativo';
+    if (!o.statusMotivo)  o.statusMotivo = '';
     if (!o.pagamento)           o.pagamento = {status:'pendente',data:'',obs:''};
     if (!o.comissaoPagamento)   o.comissaoPagamento = {status:'pendente',data:''};
+
+    // ── migração para multi-tipo ─────────────────────────────
+    if (!o.tipos) {
+      if (o.tipo === 'Ambos') o.tipos = ['Fiscal','Previdenciário'];
+      else if (o.tipo)        o.tipos = [o.tipo];
+      else                    o.tipos = [];
+    }
+    if (!o.etapasPorTipo) {
+      o.etapasPorTipo = {};
+      o.tipos.forEach(t => { o.etapasPorTipo[t] = o.etapaId || 1; });
+    }
+    if (!o.etapaEntradaPorTipo) {
+      o.etapaEntradaPorTipo = {};
+      const firstTipo = o.tipos[0];
+      if (firstTipo) o.etapaEntradaPorTipo[firstTipo] = o.etapaEntrada || {};
+    }
+    if (!o.prazosPorTipo) {
+      o.prazosPorTipo = {};
+      const firstTipo = o.tipos[0];
+      if (firstTipo) o.prazosPorTipo[firstTipo] = o.prazos || {};
+    }
+    if (!o.followupsPorTipo) {
+      o.followupsPorTipo = {};
+      const firstTipo = o.tipos[0];
+      if (firstTipo) o.followupsPorTipo[firstTipo] = o.followups || [];
+    }
+    if (!o.docsPorTipo) {
+      o.docsPorTipo = {};
+      const firstTipo = o.tipos[0];
+      if (firstTipo) o.docsPorTipo[firstTipo] = o.docs || {};
+    }
+    if (!o.historicoPorTipo) {
+      o.historicoPorTipo = {};
+      const firstTipo = o.tipos[0];
+      if (firstTipo) o.historicoPorTipo[firstTipo] = o.historico || [];
+    }
+    if (!o.subEtapasPorTipo) {
+      o.subEtapasPorTipo = {};
+      const firstTipo = o.tipos[0];
+      if (firstTipo) o.subEtapasPorTipo[firstTipo] = {
+        lev:  o.subEtapas    || null,
+        aprv: o.subEtapasAprv|| null,
+        reun: o.subEtapasReun|| null
+      };
+    }
   });
 }
 
@@ -1102,9 +1172,12 @@ function getDefaultCanais() {
 function getDefaultOpors() {
   const now = new Date().toISOString();
   return [
-    {id:1,cliente:'Distribuidora São Paulo Ltda',cnpj:'12.345.678/0001-90',contato:'Carlos Mendes',email:'carlos@dspl.com.br',tel:'(11) 98000-1234',tipo:'Previdenciário',valorEstimado:0,valorValidado:0,etapaId:2,responsavel:'Bruno',origem:'IA Hub',indicado:'',honorarios:0,exito:25,followups:[],docs:{},historico:[{tipo:'entrada',texto:'Oportunidade criada',data:now,user:'Bruno'}],prazos:{},etapaEntrada:{2:now},notas:''},
-    {id:2,cliente:'Indústria Metalúrgica RJ',cnpj:'98.765.432/0001-11',contato:'Ana Lima',email:'ana@imrj.com.br',tel:'(21) 97000-5678',tipo:'Ambos',valorEstimado:0,valorValidado:310000,etapaId:6,responsavel:'Bruno',origem:'CorpLink',indicado:'',honorarios:5000,exito:25,followups:[{data:now,user:'Bruno',texto:'Reunião realizada com sucesso'}],docs:{},historico:[{tipo:'entrada',texto:'Oportunidade criada',data:now,user:'Bruno'}],prazos:{},etapaEntrada:{6:now},notas:''},
-    {id:3,cliente:'Clínica Bem Estar',cnpj:'45.678.901/0001-22',contato:'Dr. Paulo',email:'paulo@clinicabe.com.br',tel:'(11) 96000-9999',tipo:'Consultoria',valorEstimado:0,valorValidado:0,etapaId:1,responsavel:'Bruno',origem:'VOLAR',indicado:'',honorarios:3500,exito:0,followups:[],docs:{},historico:[{tipo:'entrada',texto:'Oportunidade criada',data:now,user:'Bruno'}],prazos:{},etapaEntrada:{1:now},notas:''}
+    {id:1,cliente:'Distribuidora São Paulo Ltda',cnpj:'12.345.678/0001-90',contato:'Carlos Mendes',email:'carlos@dspl.com.br',tel:'(11) 98000-1234',tipos:['Previdenciário'],valorEstimado:0,valorValidado:0,responsavel:'Bruno',origem:'IA Hub',indicado:'',honorarios:0,exito:25,
+      etapasPorTipo:{'Previdenciário':2},etapaEntradaPorTipo:{'Previdenciário':{2:now}},followupsPorTipo:{'Previdenciário':[]},docsPorTipo:{'Previdenciário':{}},historicoPorTipo:{'Previdenciário':[{tipo:'entrada',texto:'Oportunidade criada',data:now,user:'Bruno'}]},prazosPorTipo:{'Previdenciário':{}},subEtapasPorTipo:{},notas:''},
+    {id:2,cliente:'Indústria Metalúrgica RJ',cnpj:'98.765.432/0001-11',contato:'Ana Lima',email:'ana@imrj.com.br',tel:'(21) 97000-5678',tipos:['Fiscal','Previdenciário'],valorEstimado:0,valorValidado:310000,responsavel:'Bruno',origem:'CorpLink',indicado:'',honorarios:5000,exito:25,
+      etapasPorTipo:{'Fiscal':6,'Previdenciário':3},etapaEntradaPorTipo:{'Fiscal':{6:now},'Previdenciário':{3:now}},followupsPorTipo:{'Fiscal':[{data:now,user:'Bruno',texto:'Reunião realizada com sucesso'}],'Previdenciário':[]},docsPorTipo:{'Fiscal':{},'Previdenciário':{}},historicoPorTipo:{'Fiscal':[{tipo:'entrada',texto:'Oportunidade criada',data:now,user:'Bruno'}],'Previdenciário':[{tipo:'entrada',texto:'Processo Previdenciário iniciado',data:now,user:'Bruno'}]},prazosPorTipo:{'Fiscal':{},'Previdenciário':{}},subEtapasPorTipo:{},notas:''},
+    {id:3,cliente:'Clínica Bem Estar',cnpj:'45.678.901/0001-22',contato:'Dr. Paulo',email:'paulo@clinicabe.com.br',tel:'(11) 96000-9999',tipos:['Consultoria'],valorEstimado:0,valorValidado:0,responsavel:'Bruno',origem:'VOLAR',indicado:'',honorarios:3500,exito:0,
+      etapasPorTipo:{'Consultoria':1},etapaEntradaPorTipo:{'Consultoria':{1:now}},followupsPorTipo:{'Consultoria':[]},docsPorTipo:{'Consultoria':{}},historicoPorTipo:{'Consultoria':[{tipo:'entrada',texto:'Oportunidade criada',data:now,user:'Bruno'}]},prazosPorTipo:{'Consultoria':{}},subEtapasPorTipo:{},notas:''}
   ];
 }
 
@@ -1297,38 +1370,51 @@ function getEtapa(id, tipo) {
   return getEtapasFor(tipo).find(e => e.id===id) || null;
 }
 
-function getSlaStatus(opp) {
-  const etapa = getEtapa(opp.etapaId, opp.tipo);
-  if (!etapa) return 'ok';
-  const entradaIso = opp.etapaEntrada && opp.etapaEntrada[opp.etapaId];
-  const prazoCustom = opp.prazos && opp.prazos[opp.etapaId];
-  if (prazoCustom && prazoCustom.dataLimite) {
-    const remaining = Math.floor((new Date(prazoCustom.dataLimite).getTime()-Date.now())/86400000);
-    if (remaining < 0)  return 'danger';
-    if (remaining <= 3) return 'warn';
+function getSlaStatus(opp, tipo) {
+  if (!tipo) {
+    // sem tipo: retorna o pior status entre todos os tipos
+    const sts = (opp.tipos||[]).map(t => getSlaStatus(opp, t));
+    if (sts.includes('danger')) return 'danger';
+    if (sts.includes('warn'))   return 'warn';
     return 'ok';
   }
-  const diasNaEtapa = daysDiff(entradaIso);
-  if (diasNaEtapa > etapa.sla)         return 'danger';
-  if (diasNaEtapa > etapa.sla * 0.75)  return 'warn';
+  const etapaId    = getOppEtapaId(opp, tipo);
+  const etapa      = getEtapa(etapaId, tipo);
+  if (!etapa) return 'ok';
+  const entrada    = getOppEtapaEntrada(opp, tipo);
+  const entradaIso = entrada[etapaId];
+  const prazoCustom= (getOppPrazos(opp, tipo)||{})[etapaId];
+  if (prazoCustom && prazoCustom.dataLimite) {
+    const rem = Math.floor((new Date(prazoCustom.dataLimite).getTime()-Date.now())/86400000);
+    if (rem < 0)  return 'danger';
+    if (rem <= 3) return 'warn';
+    return 'ok';
+  }
+  const dias = daysDiff(entradaIso);
+  if (dias > etapa.sla)        return 'danger';
+  if (dias > etapa.sla * 0.75) return 'warn';
   return 'ok';
 }
 
-function getDiasBadge(opp) {
-  const entradaIso = opp.etapaEntrada && opp.etapaEntrada[opp.etapaId];
+function getDiasBadge(opp, tipo) {
+  const entrada    = getOppEtapaEntrada(opp, tipo);
+  const etapaId    = getOppEtapaId(opp, tipo);
+  const entradaIso = entrada[etapaId];
   const dias = daysDiff(entradaIso);
-  const st = getSlaStatus(opp);
-  const cls = st==='danger'?'sla-danger':st==='warn'?'sla-warn':'sla-ok';
+  const st   = getSlaStatus(opp, tipo);
+  const cls  = st==='danger'?'sla-danger':st==='warn'?'sla-warn':'sla-ok';
   return `<span class="card-dias ${cls}">${dias}d</span>`;
 }
 
-function hasPendingDocs(opp) {
-  const etapa = getEtapa(opp.etapaId, opp.tipo);
+function hasPendingDocs(opp, tipo) {
+  const etapaId = getOppEtapaId(opp, tipo);
+  const etapa   = getEtapa(etapaId, tipo);
   if (!etapa || !etapa.docs.length) return false;
+  const docs = getOppDocs(opp, tipo);
   for (const doc of etapa.docs) {
     if (!doc.obrigatorio) continue;
-    const key = `${opp.etapaId}_${doc.nome}`;
-    if (!opp.docs[key] || !opp.docs[key].recebido) return true;
+    const key = `${etapaId}_${doc.nome}`;
+    if (!docs[key] || !docs[key].recebido) return true;
   }
   return false;
 }
@@ -1349,14 +1435,24 @@ function abbrevPipeNome(nome) {
   return map[nome] || nome;
 }
 
-function getPipeEtapasAndOpps() {
-  if (currentFunilFilter==='cons') {
-    return { etapas: config.etapasConsultoria||[], opps: opors.filter(o=>o.tipo==='Consultoria'&&o.status!=='inativo') };
-  } else if (currentFunilFilter==='trans') {
-    return { etapas: config.etapasTransacao||[], opps: opors.filter(o=>o.tipo==='Transação Tributária'&&o.status!=='inativo') };
-  } else {
-    return { etapas: config.etapas||[], opps: opors.filter(o=>o.tipo!=='Consultoria'&&o.tipo!=='Transação Tributária'&&o.status!=='inativo') };
-  }
+function getPipeEtapas() {
+  if (currentFunilFilter==='cons')  return config.etapasConsultoria||[];
+  if (currentFunilFilter==='trans') return config.etapasTransacao||[];
+  return config.etapas||[];
+}
+
+function getPipeVirtualCards() {
+  const f = currentFunilFilter;
+  const cards = [];
+  opors.filter(o=>o.status!=='inativo').forEach(opp => {
+    (opp.tipos||[]).forEach(tipo => {
+      if (f==='cons'  && tipo!=='Consultoria')           return;
+      if (f==='trans' && tipo!=='Transação Tributária')  return;
+      if (!f && (tipo==='Consultoria'||tipo==='Transação Tributária')) return;
+      cards.push({ opp, tipo, etapaId: getOppEtapaId(opp,tipo) });
+    });
+  });
+  return cards;
 }
 
 function renderPipeline() {
@@ -1364,17 +1460,17 @@ function renderPipeline() {
   if (!stageRow) return;
   stageRow.innerHTML = '';
 
-  const { etapas, opps } = getPipeEtapasAndOpps();
+  const etapas = getPipeEtapas();
+  const vCards = getPipeVirtualCards();
 
-  // Pick active stage: keep current if valid, else first stage that has cards, else first stage
   const validActive = etapas.find(e=>e.id===activePipeEtapaId);
   if (!validActive) {
-    const firstWithCards = etapas.find(e=>opps.some(o=>o.etapaId===e.id));
+    const firstWithCards = etapas.find(e=>vCards.some(vc=>vc.etapaId===e.id));
     activePipeEtapaId = firstWithCards ? firstWithCards.id : (etapas[0]?.id || null);
   }
 
   etapas.forEach((etapa, i) => {
-    const count = opps.filter(o=>o.etapaId===etapa.id).length;
+    const count = vCards.filter(vc=>vc.etapaId===etapa.id).length;
     const node = document.createElement('div');
     node.className = 'pipe-node' + (etapa.id===activePipeEtapaId ? ' active' : '');
     node.dataset.etapaId = etapa.id;
@@ -1401,23 +1497,24 @@ function selectPipeStage(etapaId) {
 }
 
 function renderPipeCards() {
-  const { etapas, opps } = getPipeEtapasAndOpps();
+  const etapas = getPipeEtapas();
+  const vCards = getPipeVirtualCards();
   const etapa  = etapas.find(e=>e.id===activePipeEtapaId);
   const grid   = document.getElementById('pipe-cards-grid');
   const title  = document.getElementById('pipe-panel-title');
   if (!grid) return;
   grid.innerHTML = '';
   if (!etapa) { if(title) title.textContent = 'Selecione uma etapa acima'; return; }
-  const cards = opps.filter(o=>o.etapaId===etapa.id);
-  if (title) title.textContent = `${etapa.nome} — ${cards.length} cliente${cards.length!==1?'s':''}`;
+  const cards = vCards.filter(vc=>vc.etapaId===etapa.id);
+  if (title) title.textContent = `${etapa.nome} — ${cards.length} card${cards.length!==1?'s':''}`;
   if (!cards.length) {
     grid.innerHTML = '<div class="pipe-empty">Nenhum cliente nesta etapa</div>';
     return;
   }
-  cards.forEach(opp => grid.appendChild(makeCard(opp)));
+  cards.forEach(vc => grid.appendChild(makeCard(vc)));
 }
 
-function buildSubCascade(opp, ses, type) {
+function buildSubCascade(opp, ses, type, tipo) {
   const doneCount = ses.filter(s=>s.concluido).length;
   const isOpen = openSubPanels.has(opp.id);
   const dots = ses.map((se,i)=>{
@@ -1431,12 +1528,12 @@ function buildSubCascade(opp, ses, type) {
     const active = !done&&!skipped&&prevOk;
     const cls = done?'step-done':skipped?'step-skip':active?'step-active':'step-pending';
     const skipBtn = se.opcional&&active
-      ? `<button class="card-sub-skip-btn" onclick="event.stopPropagation();skipSubEtapa(${opp.id},${i},'${type}')">Pular</button>`
+      ? `<button class="card-sub-skip-btn" onclick="event.stopPropagation();skipSubEtapa(${opp.id},${i},'${type}','${tipo}')">Pular</button>`
       : (skipped ? `<span style="font-size:11px;color:#bbb;font-style:italic">pulado</span>` : '');
     return `<div class="card-sub-step ${cls}">
       <input type="checkbox" ${done?'checked':''} ${(!active&&!done)||skipped?'disabled':''}
         onclick="event.stopPropagation()"
-        onchange="event.stopPropagation();checkSubEtapaCard(${opp.id},${i},this.checked,'${type}')"
+        onchange="event.stopPropagation();checkSubEtapaCard(${opp.id},${i},this.checked,'${type}','${tipo}')"
         style="flex-shrink:0;cursor:${active||done?'pointer':'not-allowed'}">
       <span class="card-sub-step-nome">${i+1}. ${se.nome}${se.opcional?' <span style="font-size:10px;color:var(--text2);font-weight:400">(opcional)</span>':''}</span>
       <span class="card-sub-step-dias">${se.dias}d</span>
@@ -1451,17 +1548,20 @@ function buildSubCascade(opp, ses, type) {
     </div>
     <div class="card-sub-panel ${isOpen?'open':''}">
       ${steps}
-      <button class="card-edit-lev" onclick="event.stopPropagation();openOpp(${opp.id},'followup')">Ver detalhes ↗</button>
+      <button class="card-edit-lev" onclick="event.stopPropagation();openOpp(${opp.id},'followup','${tipo}')">Ver detalhes ↗</button>
     </div>`;
 }
 
-function makeCard(opp) {
+function makeCard(vc) {
+  const { opp, tipo, etapaId } = vc;
   const card = document.createElement('div');
-  const slaSt = getSlaStatus(opp);
-  card.className = 'opp-card ' + (TIPO_CARD_CLASS[opp.tipo]||'card-tipo-prev') + (slaSt==='danger'?' card-sla-danger':slaSt==='warn'?' card-sla-warn':'');
+  const slaSt = getSlaStatus(opp, tipo);
+  card.className = 'opp-card ' + (TIPO_CARD_CLASS[tipo]||'card-tipo-prev') + (slaSt==='danger'?' card-sla-danger':slaSt==='warn'?' card-sla-warn':'');
   card.dataset.oppId = opp.id;
-  const pendDoc = hasPendingDocs(opp);
-  const lastFu = opp.followups&&opp.followups.length ? opp.followups[opp.followups.length-1] : null;
+  card.dataset.tipo  = tipo;
+  const pendDoc = hasPendingDocs(opp, tipo);
+  const fus  = getOppFollowups(opp, tipo);
+  const lastFu = fus.length ? fus[fus.length-1] : null;
   const diasFu = lastFu ? daysDiff(lastFu.data) : null;
   const fuAlert = diasFu!==null && diasFu>=fuDias;
 
@@ -1471,18 +1571,18 @@ function makeCard(opp) {
       ${pendDoc?'<span class="card-doc-alert" title="Documento pendente">📄</span>':''}
     </div>
     <div class="card-badges">
-      <span class="badge ${TIPO_BADGE[opp.tipo]||'badge-prev'}">${opp.tipo}</span>
+      <span class="badge ${TIPO_BADGE[tipo]||'badge-prev'}">${tipo}</span>
       ${opp.origem?`<span class="badge badge-origem">${opp.origem}</span>`:''}
     </div>
     <div class="card-info-row">
       <span>👤 ${opp.responsavel}</span>
-      ${getDiasBadge(opp)}
+      ${getDiasBadge(opp, tipo)}
     </div>
     ${(()=>{const pag=opp.pagamento||{}; const vaprv=(opp.valorAprovadoFiscal||0)+(opp.valorAprovadoPrevidenciario||0); if(!vaprv) return ''; const s=pag.status||'pendente'; const badge=s==='pago'?'✓ Pago':s==='parcial'?'½ Parcial':'💰 A receber'; const col=s==='pago'?'var(--green)':s==='parcial'?'var(--amber)':'var(--accent)'; return `<div class="card-info-row"><span style="color:var(--text2)">Aprovado</span><span style="color:${col};font-weight:700;font-size:12px">${fmtBRL(vaprv)} · ${badge}</span></div>`;})()}
     ${lastFu?`<div class="card-fu-info">${fuAlert?'⚠ ':'⏱ '}Follow-up: ${diasFu===0?'hoje':diasFu+'d atrás'}</div>`:'<div class="card-fu-info" style="color:var(--red);font-weight:600">⚠ Sem follow-up</div>'}`;
 
-  const etapasOpp = getEtapasFor(opp.tipo);
-  const thisEtapa = etapasOpp.find(e => e.id == opp.etapaId);
+  const etapasOpp = getEtapasFor(tipo);
+  const thisEtapa = etapasOpp.find(e => e.id == etapaId);
   const etapaName = thisEtapa ? thisEtapa.nome.toLowerCase() : '';
   const isLev  = etapaName.includes('levantamento');
   const isAprv = !isLev && (
@@ -1491,35 +1591,37 @@ function makeCard(opp) {
     etapaName.includes('aproveitament')
   );
   const isReun = !isLev && !isAprv && (etapaName.includes('reuni'));
+  const tipoSub = getOppSubEtapas(opp, tipo);
 
   if (isLev) {
     const def = (config.subEtapasLevantamento||SUB_ETAPAS_LEVA).map((se,i)=>({idx:i,nome:se.nome,dias:se.dias,concluido:false,dataInicio:null,dataConcluido:null}));
-    const ses = opp.subEtapas && opp.subEtapas.length ? opp.subEtapas : def;
-    card.innerHTML = baseHtml + buildSubCascade(opp, ses, 'lev');
+    const ses = tipoSub.lev && tipoSub.lev.length ? tipoSub.lev : def;
+    card.innerHTML = baseHtml + buildSubCascade(opp, ses, 'lev', tipo);
     card.addEventListener('click', e => { if(!dragging) toggleCardSubPanel(opp.id); });
   } else if (isAprv) {
     const def = (config.subEtapasAproveitamento||getDefaultSubEtapasAprv()).map((se,i)=>({idx:i,nome:se.nome,dias:se.dias,concluido:false,dataInicio:null,dataConcluido:null}));
-    const ses = opp.subEtapasAprv && opp.subEtapasAprv.length ? opp.subEtapasAprv : def;
-    card.innerHTML = baseHtml + buildSubCascade(opp, ses, 'aprv');
+    const ses = tipoSub.aprv && tipoSub.aprv.length ? tipoSub.aprv : def;
+    card.innerHTML = baseHtml + buildSubCascade(opp, ses, 'aprv', tipo);
     card.addEventListener('click', e => { if(!dragging) toggleCardSubPanel(opp.id); });
   } else if (isReun) {
     const def = (config.subEtapasReuniao||getDefaultSubEtapasReun()).map((se,i)=>({idx:i,nome:se.nome,dias:se.dias,opcional:!!se.opcional,concluido:false,pulada:false,dataInicio:null,dataConcluido:null}));
-    const ses = opp.subEtapasReun && opp.subEtapasReun.length ? opp.subEtapasReun : def;
-    card.innerHTML = baseHtml + buildSubCascade(opp, ses, 'reun');
+    const ses = tipoSub.reun && tipoSub.reun.length ? tipoSub.reun : def;
+    card.innerHTML = baseHtml + buildSubCascade(opp, ses, 'reun', tipo);
     card.addEventListener('click', e => { if(!dragging) toggleCardSubPanel(opp.id); });
   } else {
     card.innerHTML = baseHtml;
-    card.addEventListener('click', e => { if(!dragging) openOpp(opp.id); });
+    card.addEventListener('click', e => { if(!dragging) openOpp(opp.id, null, tipo); });
   }
 
-  setupDrag(card, opp.id);
+  setupDrag(card, opp.id, tipo);
   return card;
 }
 
-function setupDrag(card, oppId) {
+function setupDrag(card, oppId, tipo) {
   card.addEventListener('mousedown', e => {
     if (e.button!==0) return;
     dragCardOppId = oppId;
+    dragCardTipo  = tipo;
     let startX=e.clientX, startY=e.clientY, moved=false;
 
     const onMove = ev => {
@@ -1549,62 +1651,49 @@ function setupDrag(card, oppId) {
       if (moved) {
         const el=document.elementFromPoint(ev.clientX,ev.clientY);
         const pn=el&&el.closest('.pipe-node');
-        if (pn) moveOppToEtapa(dragCardOppId, parseInt(pn.dataset.etapaId));
+        if (pn) moveOppToEtapa(dragCardOppId, parseInt(pn.dataset.etapaId), dragCardTipo);
         setTimeout(()=>{ dragging=false; },50);
       } else { dragging=false; }
-      dragCardOppId=null;
+      dragCardOppId=null; dragCardTipo=null;
     };
     document.addEventListener('mousemove',onMove);
     document.addEventListener('mouseup',onUp);
   });
 }
 
-
-function moveOppToEtapa(oppId, newEtapaId) {
+function moveOppToEtapa(oppId, newEtapaId, tipo) {
   const opp = opors.find(o=>o.id===oppId);
-  if (!opp||opp.etapaId===newEtapaId) return;
-  const oldName = getEtapa(opp.etapaId,opp.tipo)?.nome||opp.etapaId;
-  const newEtapa = getEtapa(newEtapaId, opp.tipo);
-  const newName = newEtapa?.nome||newEtapaId;
-  opp.etapaId = newEtapaId;
-  if (!opp.etapaEntrada) opp.etapaEntrada={};
-  opp.etapaEntrada[newEtapaId] = new Date().toISOString();
-  addHistorico(opp,`Movido de "${oldName}" para "${newName}"`,'mover');
+  if (!opp) return;
+  const curId   = getOppEtapaId(opp, tipo);
+  if (curId === newEtapaId) return;
+  const oldName = getEtapa(curId, tipo)?.nome || curId;
+  const newEtapa= getEtapa(newEtapaId, tipo);
+  const newName = newEtapa?.nome || newEtapaId;
+  setOppEtapaId(opp, tipo, newEtapaId);
+  if (!opp.etapaEntradaPorTipo) opp.etapaEntradaPorTipo={};
+  if (!opp.etapaEntradaPorTipo[tipo]) opp.etapaEntradaPorTipo[tipo]={};
+  opp.etapaEntradaPorTipo[tipo][newEtapaId] = new Date().toISOString();
+  // temporarily set editingTipo for addHistorico
+  const prevET = editingTipo; editingTipo = tipo;
+  addHistorico(opp, `Movido de "${oldName}" para "${newName}"`, 'mover');
+  editingTipo = prevET;
   if (newEtapa) {
     const nn = newEtapa.nome.toLowerCase();
     const newIsLev  = nn.includes('levantamento');
-    const newIsAprv = !newIsLev && (
-      nn.includes('restituição') || nn.includes('extemporân') ||
-      (nn.includes('compens') && !nn.includes('previdenci')) ||
-      nn.includes('aproveitament')
-    );
+    const newIsAprv = !newIsLev && (nn.includes('restituição')||nn.includes('extemporân')||(nn.includes('compens')&&!nn.includes('previdenci'))||nn.includes('aproveitament'));
     const newIsReun = !newIsLev && !newIsAprv && nn.includes('reuni');
-    if (newIsLev && !opp.subEtapas) {
-      opp.subEtapas = (config.subEtapasLevantamento||SUB_ETAPAS_LEVA).map((se,i) => ({
-        idx:i, nome:se.nome, dias:se.dias, concluido:false,
-        dataInicio: i===0 ? new Date().toISOString() : null,
-        dataConcluido: null
-      }));
-    }
-    if (newIsAprv && !opp.subEtapasAprv) {
-      opp.subEtapasAprv = (config.subEtapasAproveitamento||getDefaultSubEtapasAprv()).map((se,i) => ({
-        idx:i, nome:se.nome, dias:se.dias, concluido:false,
-        dataInicio: i===0 ? new Date().toISOString() : null,
-        dataConcluido: null
-      }));
-    }
-    if (newIsReun && !opp.subEtapasReun) {
-      opp.subEtapasReun = (config.subEtapasReuniao||getDefaultSubEtapasReun()).map((se,i) => ({
-        idx:i, nome:se.nome, dias:se.dias, opcional:!!se.opcional, concluido:false, pulada:false,
-        dataInicio: i===0 ? new Date().toISOString() : null,
-        dataConcluido: null
-      }));
-    }
+    const sub = getOppSubEtapas(opp, tipo);
+    if (newIsLev && !sub.lev) setOppSubField(opp, tipo, 'lev',
+      (config.subEtapasLevantamento||SUB_ETAPAS_LEVA).map((se,i)=>({idx:i,nome:se.nome,dias:se.dias,concluido:false,dataInicio:i===0?new Date().toISOString():null,dataConcluido:null})));
+    if (newIsAprv && !sub.aprv) setOppSubField(opp, tipo, 'aprv',
+      (config.subEtapasAproveitamento||getDefaultSubEtapasAprv()).map((se,i)=>({idx:i,nome:se.nome,dias:se.dias,concluido:false,dataInicio:i===0?new Date().toISOString():null,dataConcluido:null})));
+    if (newIsReun && !sub.reun) setOppSubField(opp, tipo, 'reun',
+      (config.subEtapasReuniao||getDefaultSubEtapasReun()).map((se,i)=>({idx:i,nome:se.nome,dias:se.dias,opcional:!!se.opcional,concluido:false,pulada:false,dataInicio:i===0?new Date().toISOString():null,dataConcluido:null})));
   }
   saveOpors();
   renderPipeline();
-  sendWhatsAppNotif('mudanca_etapa', `🔄 *BIDATX* — ${opp.cliente} avançou para *${newName}*`, {etapaNome: newName});
-  showNotif(`${opp.cliente} → ${newName}`);
+  sendWhatsAppNotif('mudanca_etapa', `🔄 *BIDATX* — ${opp.cliente} (${tipo}) avançou para *${newName}*`, {etapaNome: newName});
+  showNotif(`${opp.cliente} (${tipo}) → ${newName}`);
 }
 
 // ============================================================
@@ -1628,16 +1717,18 @@ function openNewOpp() {
   document.getElementById('modal-opp-overlay').classList.remove('hidden');
 }
 
-function openOpp(id, startTab) {
+function openOpp(id, startTab, tipoCtx) {
   editingOppId = id;
   const opp = opors.find(o=>o.id===id);
   if (!opp) return;
+  editingTipo = tipoCtx || (opp.tipos||[])[0] || null;
   document.getElementById('modal-opp-title').textContent = opp.cliente;
   document.getElementById('opp-inner-tabs').style.display = '';
   populateOrigemSelect(opp.origem);
   populateExecutorSelect(opp.executor);
-  populateEtapaSelect(opp.tipo, opp.etapaId);
+  populateEtapaSelect(editingTipo, getOppEtapaId(opp, editingTipo));
   fillOppForm(opp);
+  renderTipoSwitcher(opp);
   document.getElementById('opp-edit-section').style.display = '';
   document.getElementById('btn-save-opp').style.display = '';
   document.getElementById('btn-declinar').style.display = opp.status==='inativo' ? 'none' : '';
@@ -1645,46 +1736,67 @@ function openOpp(id, startTab) {
   if (tabBtn) tabBtn.style.display = '';
   const pagBtn = document.getElementById('tab-btn-pagamentos');
   if (pagBtn) pagBtn.style.display = '';
-  const etapasOpp = getEtapasFor(opp.tipo);
-  const thisEtapa2 = etapasOpp.find(e => e.id == opp.etapaId);
+  // init sub-etapas for editingTipo
+  const etapaId2   = getOppEtapaId(opp, editingTipo);
+  const etapasOpp  = getEtapasFor(editingTipo);
+  const thisEtapa2 = etapasOpp.find(e => e.id == etapaId2);
   const etapaName2 = thisEtapa2 ? thisEtapa2.nome.toLowerCase() : '';
   const isLev2  = etapaName2.includes('levantamento');
-  const isAprv2 = !isLev2 && (
-    etapaName2.includes('restituição') || etapaName2.includes('extemporân') ||
-    (etapaName2.includes('compens') && !etapaName2.includes('previdenci')) ||
-    etapaName2.includes('aproveitament')
-  );
+  const isAprv2 = !isLev2 && (etapaName2.includes('restituição')||etapaName2.includes('extemporân')||(etapaName2.includes('compens')&&!etapaName2.includes('previdenci'))||etapaName2.includes('aproveitament'));
   const isReun2 = !isLev2 && !isAprv2 && etapaName2.includes('reuni');
+  const sub = getOppSubEtapas(opp, editingTipo);
   let needSave = false;
-  if (isLev2 && !opp.subEtapas) {
-    opp.subEtapas = (config.subEtapasLevantamento||SUB_ETAPAS_LEVA).map((se,i) => ({
-      idx:i, nome:se.nome, dias:se.dias, concluido:false,
-      dataInicio: i===0 ? new Date().toISOString() : null,
-      dataConcluido: null
-    }));
-    needSave = true;
+  if (isLev2 && !sub.lev) {
+    setOppSubField(opp, editingTipo, 'lev', (config.subEtapasLevantamento||SUB_ETAPAS_LEVA).map((se,i)=>({idx:i,nome:se.nome,dias:se.dias,concluido:false,dataInicio:i===0?new Date().toISOString():null,dataConcluido:null})));
+    needSave=true;
   }
-  if (isAprv2 && !opp.subEtapasAprv) {
-    opp.subEtapasAprv = (config.subEtapasAproveitamento||getDefaultSubEtapasAprv()).map((se,i) => ({
-      idx:i, nome:se.nome, dias:se.dias, concluido:false,
-      dataInicio: i===0 ? new Date().toISOString() : null,
-      dataConcluido: null
-    }));
-    needSave = true;
+  if (isAprv2 && !sub.aprv) {
+    setOppSubField(opp, editingTipo, 'aprv', (config.subEtapasAproveitamento||getDefaultSubEtapasAprv()).map((se,i)=>({idx:i,nome:se.nome,dias:se.dias,concluido:false,dataInicio:i===0?new Date().toISOString():null,dataConcluido:null})));
+    needSave=true;
   }
-  if (isReun2 && !opp.subEtapasReun) {
-    opp.subEtapasReun = (config.subEtapasReuniao||getDefaultSubEtapasReun()).map((se,i) => ({
-      idx:i, nome:se.nome, dias:se.dias, opcional:!!se.opcional, concluido:false, pulada:false,
-      dataInicio: i===0 ? new Date().toISOString() : null,
-      dataConcluido: null
-    }));
-    needSave = true;
+  if (isReun2 && !sub.reun) {
+    setOppSubField(opp, editingTipo, 'reun', (config.subEtapasReuniao||getDefaultSubEtapasReun()).map((se,i)=>({idx:i,nome:se.nome,dias:se.dias,opcional:!!se.opcional,concluido:false,pulada:false,dataInicio:i===0?new Date().toISOString():null,dataConcluido:null})));
+    needSave=true;
   }
   if (needSave) saveOpors();
   showInnerTab(startTab||'followup');
   document.getElementById('modal-opp-overlay').classList.remove('hidden');
 }
 function openOppEdit(id) { openOpp(id, 'dados'); }
+
+function renderTipoSwitcher(opp) {
+  const wrap = document.getElementById('opp-tipo-switcher');
+  if (!wrap) return;
+  const tipos = opp.tipos || [];
+  if (tipos.length <= 1) { wrap.style.display='none'; return; }
+  wrap.style.display='';
+  wrap.innerHTML = tipos.map(t =>
+    `<button class="tipo-switcher-btn${t===editingTipo?' active':''}" onclick="switchTipo('${t}')">${t}</button>`
+  ).join('');
+}
+
+function switchTipo(tipo) {
+  editingTipo = tipo;
+  const opp = opors.find(o=>o.id===editingOppId);
+  if (!opp) return;
+  renderTipoSwitcher(opp);
+  populateEtapaSelect(tipo, getOppEtapaId(opp, tipo));
+  const tabs = ['dados','followup','documentos','historico','subetapas','pagamentos'];
+  const btns = [...document.querySelectorAll('#opp-inner-tabs .modal-inner-tab')];
+  const idx  = btns.findIndex(b => b.classList.contains('active'));
+  if (idx >= 0 && tabs[idx]) showInnerTab(tabs[idx]);
+}
+
+function toggleTipoCheck(label) {
+  label.classList.toggle('checked');
+  const inp = label.querySelector('input');
+  inp.checked = !inp.checked;
+}
+
+function getSelectedTipos() {
+  return [...document.querySelectorAll('#tipo-check-group .tipo-check-item.checked')]
+    .map(l => l.dataset.tipo);
+}
 
 function clearOppForm() {
   ['opp-cliente','opp-cnpj','opp-email','opp-tel','opp-tel2','opp-resp','opp-notas','opp-indicado',
@@ -1694,7 +1806,11 @@ function clearOppForm() {
   ['pag-data','pag-com-data'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
   const ps=document.getElementById('pag-status'); if(ps) ps.value='pendente';
   const cs=document.getElementById('pag-com-status'); if(cs) cs.value='pendente';
-  document.getElementById('opp-tipo').value='';
+  // clear tipo checkboxes
+  document.querySelectorAll('#tipo-check-group .tipo-check-item').forEach(l => {
+    l.classList.remove('checked');
+    l.querySelector('input').checked = false;
+  });
   const res=document.getElementById('opp-resultado'); if(res) res.value='';
   document.getElementById('opp-etapa').innerHTML='';
   ['err-cliente','err-resp','err-tipo'].forEach(id => {
@@ -1710,7 +1826,12 @@ function fillOppForm(opp) {
   document.getElementById('opp-tel').value      = opp.tel||'';
   document.getElementById('opp-tel2').value     = opp.tel2||'';
   document.getElementById('opp-resp').value     = opp.responsavel||'';
-  document.getElementById('opp-tipo').value     = opp.tipo||'';
+  // tipo checkboxes
+  document.querySelectorAll('#tipo-check-group .tipo-check-item').forEach(l => {
+    const checked = (opp.tipos||[]).includes(l.dataset.tipo);
+    l.classList.toggle('checked', checked);
+    l.querySelector('input').checked = checked;
+  });
   document.getElementById('opp-honor').value    = opp.honorarios||'';
   document.getElementById('opp-exito').value    = opp.exito||'';
   document.getElementById('opp-notas').value    = opp.notas||'';
@@ -1737,7 +1858,7 @@ function fillOppForm(opp) {
     document.getElementById('opp-canal-com-text').textContent = txt;
     infoEl.style.display = '';
   } else if (infoEl) { infoEl.style.display = 'none'; }
-  populateEtapaSelect(opp.tipo, opp.etapaId);
+  populateEtapaSelect(editingTipo, getOppEtapaId(opp, editingTipo));
 }
 
 function populateOrigemSelect(selected) {
@@ -1815,19 +1936,14 @@ function populateEtapaSelect(tipo, selectedId) {
   });
 }
 
-function onTipoChange() {
-  const tipo = document.getElementById('opp-tipo').value;
-  populateEtapaSelect(tipo);
-}
-
 function saveOpp() {
   const cliente = document.getElementById('opp-cliente').value.trim();
   const resp    = document.getElementById('opp-resp').value.trim();
-  const tipo    = document.getElementById('opp-tipo').value;
+  const tipos   = getSelectedTipos();
   let valid=true;
   if(!cliente){ document.getElementById('err-cliente').textContent='Campo obrigatório'; valid=false; } else document.getElementById('err-cliente').textContent='';
   if(!resp)   { document.getElementById('err-resp').textContent='Campo obrigatório';   valid=false; } else document.getElementById('err-resp').textContent='';
-  if(!tipo)   { document.getElementById('err-tipo').textContent='Campo obrigatório';   valid=false; } else document.getElementById('err-tipo').textContent='';
+  if(!tipos.length){ document.getElementById('err-tipo').textContent='Selecione ao menos um tipo'; valid=false; } else document.getElementById('err-tipo').textContent='';
   if(!valid)  { showInnerTab('dados'); return; }
 
   const origem   = document.getElementById('opp-origem').value;
@@ -1840,10 +1956,31 @@ function saveOpp() {
     opp.email=document.getElementById('opp-email').value.trim();
     opp.tel=document.getElementById('opp-tel').value.trim();
     opp.tel2=document.getElementById('opp-tel2').value.trim();
-    opp.responsavel=resp; opp.tipo=tipo; opp.origem=origem; opp.indicado=indicado;
+    opp.responsavel=resp; opp.origem=origem; opp.indicado=indicado;
     opp.notas=document.getElementById('opp-notas').value.trim();
     opp.executor=document.getElementById('opp-executor').value;
     opp.resultadoLevantamento=(document.getElementById('opp-resultado')||{}).value||'';
+    // handle new tipos added
+    tipos.forEach(t => {
+      if(!opp.etapasPorTipo) opp.etapasPorTipo={};
+      if(!opp.etapasPorTipo[t]) {
+        opp.etapasPorTipo[t] = getEtapasFor(t)[0]?.id || 1;
+        if(!opp.etapaEntradaPorTipo) opp.etapaEntradaPorTipo={};
+        opp.etapaEntradaPorTipo[t] = {[opp.etapasPorTipo[t]]: now};
+        if(!opp.followupsPorTipo)  opp.followupsPorTipo={};  opp.followupsPorTipo[t]  = opp.followupsPorTipo[t]  || [];
+        if(!opp.docsPorTipo)       opp.docsPorTipo={};       opp.docsPorTipo[t]       = opp.docsPorTipo[t]       || {};
+        if(!opp.historicoPorTipo)  opp.historicoPorTipo={};  opp.historicoPorTipo[t]  = opp.historicoPorTipo[t]  || [];
+        if(!opp.prazosPorTipo)     opp.prazosPorTipo={};     opp.prazosPorTipo[t]     = opp.prazosPorTipo[t]     || {};
+        if(!opp.subEtapasPorTipo)  opp.subEtapasPorTipo={};  opp.subEtapasPorTipo[t]  = opp.subEtapasPorTipo[t]  || {lev:null,aprv:null,reun:null};
+        const prevET=editingTipo; editingTipo=t;
+        addHistorico(opp, `Tipo "${t}" adicionado`, 'entrada');
+        editingTipo=prevET;
+      }
+    });
+    opp.tipos = tipos;
+    // save etapa for current editingTipo if select is visible
+    const etaSel = document.getElementById('opp-etapa');
+    if (etaSel && etaSel.value && editingTipo) setOppEtapaId(opp, editingTipo, parseInt(etaSel.value));
     if (currentUser.perfil==='Socio') {
       opp.honorarios=parseFloat(document.getElementById('opp-honor').value)||0;
       opp.exito=parseFloat(document.getElementById('opp-exito').value)||0;
@@ -1861,37 +1998,42 @@ function saveOpp() {
     }
     showNotif('Cliente atualizado!');
   } else {
-    const etapaId = getEtapasFor(tipo)[0]?.id || 1;
-    // auto-fill comissão from canal config for new clients
     const canalCfg = (config.canaisOrigem||[]).find(c=>c.nome===origem);
-    const comissaoNova = {
-      beneficiario: canalCfg?.comissaoBeneficiario||'',
-      percentual:   canalCfg?.comissaoPercentual||0,
-      obs:          ''
-    };
+    const comissaoNova = { beneficiario:canalCfg?.comissaoBeneficiario||'', percentual:canalCfg?.comissaoPercentual||0, obs:'' };
+    const etapasPorTipo={}, etapaEntradaPorTipo={}, followupsPorTipo={}, docsPorTipo={}, historicoPorTipo={}, prazosPorTipo={}, subEtapasPorTipo={};
+    tipos.forEach(t => {
+      const fid = getEtapasFor(t)[0]?.id || 1;
+      etapasPorTipo[t]      = fid;
+      etapaEntradaPorTipo[t]= {[fid]: now};
+      followupsPorTipo[t]   = [];
+      docsPorTipo[t]        = {};
+      historicoPorTipo[t]   = [{tipo:'entrada',texto:'Cliente cadastrado',data:now,user:currentUser.nome}];
+      prazosPorTipo[t]      = {};
+      subEtapasPorTipo[t]   = {lev:null,aprv:null,reun:null};
+    });
     const newOpp = {
       id:nextId(), cliente, cnpj:document.getElementById('opp-cnpj').value.trim(),
       email:document.getElementById('opp-email').value.trim(),
       tel:document.getElementById('opp-tel').value.trim(),
       tel2:document.getElementById('opp-tel2').value.trim(),
-      responsavel:resp, tipo, origem, indicado,
+      responsavel:resp, tipos, origem, indicado,
       executor:'', resultadoLevantamento:'',
       valorLevantadoFiscal:0, valorLevantadoPrevidenciario:0,
-      valorAprovadoFiscal:0, valorAprovadoPrevidenciario:0,
-      comissao: comissaoNova, honorarios:0, exito:0,
+      valorAprovadoFiscal:0,  valorAprovadoPrevidenciario:0,
+      comissao:comissaoNova, honorarios:0, exito:0,
       pagamento:{status:'pendente',data:'',obs:''},
       comissaoPagamento:{status:'pendente',data:''},
       notas:document.getElementById('opp-notas').value.trim(),
-      etapaId, followups:[], docs:{}, aproveitamentos:[],
-      historico:[{tipo:'entrada',texto:'Cliente cadastrado',data:now,user:currentUser.nome}],
-      prazos:{}, etapaEntrada:{[etapaId]:now}
+      aproveitamentos:[],
+      etapasPorTipo, etapaEntradaPorTipo, followupsPorTipo, docsPorTipo,
+      historicoPorTipo, prazosPorTipo, subEtapasPorTipo
     };
     opors.push(newOpp);
     saveOpors();
     closeModal('modal-opp-overlay');
     if (document.getElementById('tab-funil').classList.contains('active')) renderPipeline();
     if (document.getElementById('tab-clientes').classList.contains('active')) renderClientes();
-    sendWhatsAppNotif('novo_cliente', `🆕 *BIDATX* — Novo cliente cadastrado: *${newOpp.cliente}* (${newOpp.tipo}) por ${currentUser.nome}`);
+    sendWhatsAppNotif('novo_cliente', `🆕 *BIDATX* — Novo cliente cadastrado: *${newOpp.cliente}* (${tipos.join(', ')}) por ${currentUser.nome}`);
     showNotif('Cliente cadastrado! Clique no card do pipeline para registrar follow-ups.');
     return;
   }
@@ -1900,9 +2042,12 @@ function saveOpp() {
   if (document.getElementById('tab-clientes').classList.contains('active')) renderClientes();
 }
 
-function addHistorico(opp, texto, tipo) {
-  if (!opp.historico) opp.historico=[];
-  opp.historico.push({tipo, texto, data:new Date().toISOString(), user:currentUser.nome});
+function addHistorico(opp, texto, histTipo) {
+  const pt = editingTipo || (opp.tipos||[])[0];
+  if (!pt) return;
+  if (!opp.historicoPorTipo) opp.historicoPorTipo={};
+  if (!opp.historicoPorTipo[pt]) opp.historicoPorTipo[pt]=[];
+  opp.historicoPorTipo[pt].push({tipo:histTipo, texto, data:new Date().toISOString(), user:currentUser.nome});
 }
 
 // ============================================================
@@ -1912,7 +2057,8 @@ function renderFuTab() {
   if (!editingOppId) return;
   const opp = opors.find(o=>o.id===editingOppId);
   if (!opp) return;
-  const lastFu = opp.followups&&opp.followups.length ? opp.followups[opp.followups.length-1] : null;
+  const fus = getOppFollowups(opp, editingTipo);
+  const lastFu = fus.length ? fus[fus.length-1] : null;
   const alertBox = document.getElementById('fu-alert-box');
   alertBox.innerHTML='';
   if (!lastFu) {
@@ -1923,11 +2069,11 @@ function renderFuTab() {
   }
   const list=document.getElementById('fu-list');
   list.innerHTML='';
-  if (!opp.followups||!opp.followups.length) {
+  if (!fus.length) {
     list.innerHTML='<p style="color:var(--text2);font-size:13px">Nenhum follow-up registrado.</p>';
     return;
   }
-  [...opp.followups].reverse().forEach(fu => {
+  [...fus].reverse().forEach(fu => {
     const d=document.createElement('div');
     d.className='followup-item';
     d.innerHTML=`<div class="followup-meta">${fmtDate(fu.data)} · ${fu.user}</div><div class="followup-text">${fu.texto}</div>`;
@@ -1946,8 +2092,9 @@ function saveFu() {
   if(!texto){ showNotif('Digite o registro de follow-up','error'); return; }
   const opp=opors.find(o=>o.id===editingOppId);
   if(!opp) return;
-  if(!opp.followups) opp.followups=[];
-  opp.followups.push({data:new Date().toISOString(),user:currentUser.nome,texto});
+  if(!opp.followupsPorTipo) opp.followupsPorTipo={};
+  if(!opp.followupsPorTipo[editingTipo]) opp.followupsPorTipo[editingTipo]=[];
+  opp.followupsPorTipo[editingTipo].push({data:new Date().toISOString(),user:currentUser.nome,texto});
   addHistorico(opp,`Follow-up: ${texto.substring(0,60)}${texto.length>60?'…':''}`, 'followup');
   saveOpors();
   document.getElementById('fu-texto').value='';
@@ -1968,8 +2115,10 @@ function savePrazo() {
   if(!motivo){ showNotif('Informe o motivo','error'); return; }
   const opp=opors.find(o=>o.id===editingOppId);
   if(!opp) return;
-  if(!opp.prazos) opp.prazos={};
-  opp.prazos[opp.etapaId]={dataLimite:data||null,motivo,data:new Date().toISOString(),user:currentUser.nome};
+  if(!opp.prazosPorTipo) opp.prazosPorTipo={};
+  if(!opp.prazosPorTipo[editingTipo]) opp.prazosPorTipo[editingTipo]={};
+  const _etapaIdPrazo = getOppEtapaId(opp, editingTipo);
+  opp.prazosPorTipo[editingTipo][_etapaIdPrazo]={dataLimite:data||null,motivo,data:new Date().toISOString(),user:currentUser.nome};
   const dataFmt=data?new Date(data).toLocaleDateString('pt-BR'):'sem data';
   addHistorico(opp,`Prazo redefinido: ${motivo} (nova data: ${dataFmt})`,'prazo');
   saveOpors();
@@ -1987,7 +2136,9 @@ function renderDocsTab() {
   if (!editingOppId) return;
   const opp=opors.find(o=>o.id===editingOppId);
   if (!opp) return;
-  const etapa=getEtapa(opp.etapaId,opp.tipo);
+  const etapaId=getOppEtapaId(opp,editingTipo);
+  const etapa=getEtapa(etapaId,editingTipo);
+  const oppDocs=getOppDocs(opp,editingTipo);
   const currList=document.getElementById('docs-current-list');
   currList.innerHTML='';
   if (!etapa||!etapa.docs.length) {
@@ -1998,22 +2149,22 @@ function renderDocsTab() {
     title.textContent=`Documentos — ${etapa.nome}`;
     currList.appendChild(title);
     etapa.docs.forEach(doc => {
-      const key=`${opp.etapaId}_${doc.nome}`;
-      const info=opp.docs[key]; const recv=info&&info.recebido;
+      const key=`${etapaId}_${doc.nome}`;
+      const info=oppDocs[key]; const recv=info&&info.recebido;
       const d=document.createElement('div');
       d.className='doc-status-item';
       d.innerHTML=`
         <span class="doc-status-icon">${recv?'✅':(doc.obrigatorio?'⏳':'—')}</span>
         <span class="doc-status-name">${doc.nome} ${doc.obrigatorio?'':'<small style="color:var(--text2)">(eventual)</small>'}</span>
         <span class="doc-status-date">${recv?fmtDateShort(info.data):''}</span>
-        ${!recv?`<button class="btn-recv" onclick="recvDoc(${opp.id},${opp.etapaId},'${doc.nome.replace(/'/g,"\\'")}')">Recebido</button>`:''}`;
+        ${!recv?`<button class="btn-recv" onclick="recvDoc(${opp.id},${etapaId},'${doc.nome.replace(/'/g,"\\'")}')">Recebido</button>`:''}`;
       currList.appendChild(d);
     });
   }
   const pastList=document.getElementById('docs-past-list');
   pastList.innerHTML='';
-  const allEtapas=getEtapasFor(opp.tipo);
-  const pastEtapas=allEtapas.filter(e=>e.id<opp.etapaId&&e.docs.length>0);
+  const allEtapas=getEtapasFor(editingTipo);
+  const pastEtapas=allEtapas.filter(e=>e.id<etapaId&&e.docs.length>0);
   if (pastEtapas.length) {
     const sec=document.createElement('div');
     sec.className='docs-etapa-past';
@@ -2024,7 +2175,7 @@ function renderDocsTab() {
       wrap.innerHTML=`<div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:6px">${pe.nome}</div>`;
       pe.docs.forEach(doc => {
         const key=`${pe.id}_${doc.nome}`;
-        const info=opp.docs[key]; const recv=info&&info.recebido;
+        const info=oppDocs[key]; const recv=info&&info.recebido;
         const d=document.createElement('div');
         d.className='doc-status-item'; d.style.opacity='.7';
         d.innerHTML=`<span class="doc-status-icon">${recv?'✅':'—'}</span><span class="doc-status-name">${doc.nome}</span><span class="doc-status-date">${recv?fmtDateShort(info.data):''}</span>`;
@@ -2038,8 +2189,10 @@ function renderDocsTab() {
 
 function recvDoc(oppId, etapaId, docNome) {
   const opp=opors.find(o=>o.id===oppId); if(!opp) return;
+  if(!opp.docsPorTipo) opp.docsPorTipo={};
+  if(!opp.docsPorTipo[editingTipo]) opp.docsPorTipo[editingTipo]={};
   const key=`${etapaId}_${docNome}`;
-  opp.docs[key]={recebido:true,data:new Date().toISOString()};
+  opp.docsPorTipo[editingTipo][key]={recebido:true,data:new Date().toISOString()};
   addHistorico(opp,`Documento recebido: "${docNome}"`,'doc');
   saveOpors(); renderDocsTab();
   showNotif(`"${docNome}" recebido`);
@@ -2053,11 +2206,12 @@ function renderHistTab() {
   const opp=opors.find(o=>o.id===editingOppId);
   const list=document.getElementById('hist-list');
   list.innerHTML='';
-  if (!opp||!opp.historico||!opp.historico.length) {
+  const hist = getOppHistorico(opp, editingTipo);
+  if (!opp||!hist.length) {
     list.innerHTML='<p style="color:var(--text2);font-size:13px">Nenhum histórico.</p>';
     return;
   }
-  [...opp.historico].reverse().forEach(h => {
+  [...hist].reverse().forEach(h => {
     const d=document.createElement('div');
     d.className='hist-item';
     d.innerHTML=`<div class="hist-dot"></div><div class="hist-content"><div class="hist-text">${h.texto}</div><div class="hist-date">${fmtDate(h.data)} · ${h.user}</div></div>`;
@@ -2080,14 +2234,20 @@ function renderParaMim() {
   const now = Date.now();
   const RECENT = 3;
 
-  const lista = meus.map(o => {
-    const etapa = getEtapa(o.etapaId, o.tipo);
-    const entradaIso = o.etapaEntrada && o.etapaEntrada[o.etapaId];
-    const diasNaEtapa = entradaIso ? Math.floor((now - new Date(entradaIso)) / 86400000) : null;
-    const isNova = diasNaEtapa !== null && diasNaEtapa <= RECENT;
-    const sla = getSlaStatus(o);
-    return { o, etapa, diasNaEtapa, isNova, sla };
-  }).sort((a, b) => {
+  const lista = [];
+  meus.forEach(o => {
+    (o.tipos || [o.tipo]).filter(Boolean).forEach(tipo => {
+      const etapaId = getOppEtapaId(o, tipo);
+      const etapa = getEtapa(etapaId, tipo);
+      const entrada = getOppEtapaEntrada(o, tipo);
+      const entradaIso = entrada[etapaId];
+      const diasNaEtapa = entradaIso ? Math.floor((now - new Date(entradaIso)) / 86400000) : null;
+      const isNova = diasNaEtapa !== null && diasNaEtapa <= RECENT;
+      const sla = getSlaStatus(o, tipo);
+      lista.push({ o, tipo, etapa, diasNaEtapa, isNova, sla });
+    });
+  });
+  lista.sort((a, b) => {
     if (a.isNova !== b.isNova) return a.isNova ? -1 : 1;
     const ord = {danger:0, warn:1, ok:2};
     return (ord[a.sla]||2) - (ord[b.sla]||2);
@@ -2095,17 +2255,17 @@ function renderParaMim() {
 
   const novas = lista.filter(x => x.isNova).length;
 
-  const items = lista.map(({ o, etapa, diasNaEtapa, isNova, sla }) => {
+  const items = lista.map(({ o, tipo, etapa, diasNaEtapa, isNova, sla }) => {
     const diasLabel = diasNaEtapa === null ? '' : diasNaEtapa === 0 ? 'chegou hoje' : `${diasNaEtapa}d na etapa`;
     const badgeClass = `para-mim-badge ${sla}`;
     const novaBadge = isNova ? `<span style="font-size:10px;background:var(--green);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;margin-left:6px;vertical-align:middle">NOVA</span>` : '';
     return `<div class="para-mim-item${isNova ? ' para-mim-nova' : ''}">
       <div style="flex:1;min-width:0">
         <div class="para-mim-nome">${o.cliente}${novaBadge}</div>
-        <div class="para-mim-etapa">${etapa ? etapa.nome : '—'} · ${o.tipo}</div>
+        <div class="para-mim-etapa">${etapa ? etapa.nome : '—'} · ${tipo}</div>
       </div>
       ${diasLabel ? `<span class="${badgeClass}">${diasLabel}</span>` : ''}
-      <button class="para-mim-btn" onclick="goToOppPipeline(${o.id})">Ver no Funil →</button>
+      <button class="para-mim-btn" onclick="goToOppPipeline(${o.id},'${tipo}')">Ver no Funil →</button>
     </div>`;
   }).join('');
 
@@ -2118,14 +2278,16 @@ function renderParaMim() {
   </div>`;
 }
 
-function goToOppPipeline(oppId) {
+function goToOppPipeline(oppId, tipo) {
   const opp = opors.find(o => o.id === oppId);
   if (!opp) return;
-  if (opp.tipo === 'Consultoria') setFunilFilter('cons', document.querySelector('.tipo-pill:nth-child(2)'));
-  else if (opp.tipo === 'Transação Tributária') setFunilFilter('trans', document.querySelector('.tipo-pill:nth-child(3)'));
+  const t = tipo || (opp.tipos||[])[0] || opp.tipo;
+  if (t === 'Consultoria') setFunilFilter('cons', document.querySelector('.tipo-pill:nth-child(2)'));
+  else if (t === 'Transação Tributária') setFunilFilter('trans', document.querySelector('.tipo-pill:nth-child(3)'));
   else setFunilFilter(null, document.querySelector('.tipo-pill:nth-child(1)'));
   showTab('funil');
-  setTimeout(() => { selectPipeStage(opp.etapaId); setTimeout(() => openOpp(oppId), 80); }, 60);
+  const etapaId = getOppEtapaId(opp, t);
+  setTimeout(() => { selectPipeStage(etapaId); setTimeout(() => openOpp(oppId, null, t), 80); }, 60);
 }
 
 function renderMetrics() {
@@ -2133,7 +2295,7 @@ function renderMetrics() {
   const ativos=atv.length;
   const totalHon=atv.reduce((s,o)=>s+(o.honorarios||0),0);
   const venc=atv.filter(o=>getSlaStatus(o)==='danger').length;
-  const semFu=atv.filter(o=>!o.followups||!o.followups.length).length;
+  const semFu=atv.reduce((sum,o)=>{const tipos=(o.tipos||[o.tipo]).filter(Boolean);return sum+tipos.filter(t=>!getOppFollowups(o,t).length).length;},0);
   document.getElementById('metrics-row').innerHTML=`
     <div class="metric-card"><div class="metric-label">Oportunidades Ativas</div><div class="metric-value">${ativos}</div></div>
     <div class="metric-card"><div class="metric-label">Honorários Mensais</div><div class="metric-value" style="font-size:16px">${fmtBRL(totalHon)}</div></div>
@@ -2175,8 +2337,12 @@ function renderNegTable() {
   const tbody=document.getElementById('neg-tbody'); tbody.innerHTML='';
   let filtered=opors.filter(o => {
     if(o.status==='inativo') return false;
-    if(tipo&&o.tipo!==tipo) return false;
-    if(etapaNome){ const e=getEtapa(o.etapaId,o.tipo); if(!e||e.nome!==etapaNome) return false; }
+    if(tipo&&!(o.tipos||[o.tipo]).includes(tipo)) return false;
+    if(etapaNome){
+      const tipos=(o.tipos||[o.tipo]).filter(Boolean);
+      const match=tipos.some(t=>{const e=getEtapa(getOppEtapaId(o,t),t);return e&&e.nome===etapaNome;});
+      if(!match) return false;
+    }
     if(resp&&o.responsavel!==resp) return false;
     if(sla&&getSlaStatus(o)!==sla) return false;
     if(busca&&!(
@@ -2192,15 +2358,18 @@ function renderNegTable() {
     return;
   }
   filtered.forEach(opp => {
-    const etapa=getEtapa(opp.etapaId,opp.tipo);
+    const tipos=(opp.tipos||[opp.tipo]).filter(Boolean);
+    const primaryTipo = (tipo && tipos.includes(tipo)) ? tipo : tipos[0];
+    const etapa=getEtapa(getOppEtapaId(opp,primaryTipo),primaryTipo);
     const slaSt=getSlaStatus(opp);
     const slaCls=slaSt==='danger'?'sla-danger':slaSt==='warn'?'sla-warn':'sla-ok';
+    const tiposBadges=tipos.map(t=>`<span class="badge ${TIPO_BADGE[t]||''}">${t}</span>`).join(' ');
     const resultadoCor = opp.resultadoLevantamento==='Com Oportunidade'?'color:var(--green);font-weight:600':
                          opp.resultadoLevantamento==='Sem Oportunidade'?'color:var(--red)':'color:var(--text2)';
     const tr=document.createElement('tr');
     tr.innerHTML=`
       <td><strong>${opp.cliente}</strong><br><small style="color:var(--text2)">${opp.cnpj||'—'}</small></td>
-      <td><span class="badge ${TIPO_BADGE[opp.tipo]||''}">${opp.tipo}</span></td>
+      <td style="white-space:nowrap">${tiposBadges}</td>
       <td style="font-size:12px;max-width:140px">${etapa?etapa.nome:'—'}</td>
       <td style="font-size:12px">${opp.executor||'—'}</td>
       <td style="font-size:12px;${resultadoCor}">${opp.resultadoLevantamento||'—'}</td>
@@ -2221,20 +2390,23 @@ function getTotalAprovado(opp) {
 
 function openRelatorio(id) {
   const opp=opors.find(o=>o.id===id); if(!opp) return;
-  const etapa=getEtapa(opp.etapaId,opp.tipo);
+  const tipos=(opp.tipos||[opp.tipo]).filter(Boolean);
+  const primaryTipo=tipos[0];
+  const etapa=getEtapa(getOppEtapaId(opp,primaryTipo),primaryTipo);
   const totalAprov=getTotalAprovado(opp);
   const exitoVal=totalAprov&&opp.exito?totalAprov*opp.exito/100:0;
   let histHtml='';
-  if(opp.historico&&opp.historico.length) {
-    opp.historico.filter(h=>h.tipo==='mover'||h.tipo==='entrada').forEach(h => {
-      histHtml+=`<div class="rel-hist-row"><span class="rh-etapa">${h.texto}</span><span class="rh-date">${fmtDateShort(h.data)}</span></div>`;
-    });
-  }
+  const allHist=[];
+  tipos.forEach(t=>(getOppHistorico(opp,t)||[]).forEach(h=>allHist.push(h)));
+  allHist.filter(h=>h.tipo==='mover'||h.tipo==='entrada').sort((a,b)=>a.data>b.data?1:-1).forEach(h=>{
+    histHtml+=`<div class="rel-hist-row"><span class="rh-etapa">${h.texto}</span><span class="rh-date">${fmtDateShort(h.data)}</span></div>`;
+  });
+  const tiposBadges=tipos.map(t=>`<span class="badge ${TIPO_BADGE[t]||''}" style="font-size:13px;padding:4px 12px">${t}</span>`).join(' ');
   document.getElementById('modal-rel-body').innerHTML=`
     <div class="rel-card">
       <div class="rel-header">
-        <div><div class="rel-title">${opp.cliente}</div><div class="rel-cnpj">${opp.cnpj} · ${opp.tipo}</div></div>
-        <span class="badge ${TIPO_BADGE[opp.tipo]||''}" style="font-size:13px;padding:4px 12px">${opp.tipo}</span>
+        <div><div class="rel-title">${opp.cliente}</div><div class="rel-cnpj">${opp.cnpj} · ${tipos.join(' + ')}</div></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">${tiposBadges}</div>
       </div>
       <div class="rel-grid">
         <div class="rel-item"><div class="rel-item-label">Telefone 2</div><div class="rel-item-val">${opp.tel2||'—'}</div></div>
@@ -2437,15 +2609,12 @@ function renderDash() {
   const totalVal   = ativos.reduce((s,o) => s+(o.valorValidado||0), 0);
   const sla = {ok:0, warn:0, danger:0};
   ativos.forEach(o => { sla[getSlaStatus(o)]++; });
-  const semFu = ativos.filter(o => !o.followups||!o.followups.length).length;
-  const fudias = ativos.filter(o => {
-    const last = o.followups&&o.followups.length ? o.followups[o.followups.length-1] : null;
-    return last && daysDiff(last.data) >= fuDias;
-  }).length;
+  const semFu = ativos.reduce((sum,o)=>{const ts=(o.tipos||[o.tipo]).filter(Boolean);return sum+ts.filter(t=>!getOppFollowups(o,t).length).length;},0);
+  const fudias = ativos.reduce((sum,o)=>{const ts=(o.tipos||[o.tipo]).filter(Boolean);return sum+ts.filter(t=>{const fus=getOppFollowups(o,t);const last=fus.length?fus[fus.length-1]:null;return last&&daysDiff(last.data)>=fuDias;}).length;},0);
 
-  // Por tipo
-  const porTipo={}, tipoColors={'Previdenciário':'#1a56db','Fiscal':'#1a7a4a','Ambos':'#5b21b6','Consultoria':'#7c3aed','Transação Tributária':'#b91c1c'};
-  ativos.forEach(o=>{ porTipo[o.tipo||'?']=(porTipo[o.tipo||'?']||0)+1; });
+  // Por tipo (conta processos, não clientes)
+  const porTipo={}, tipoColors={'Previdenciário':'#1a56db','Fiscal':'#1a7a4a','Consultoria':'#7c3aed','Transação Tributária':'#b91c1c'};
+  ativos.forEach(o=>{ (o.tipos||[o.tipo]).filter(Boolean).forEach(t=>{ porTipo[t]=(porTipo[t]||0)+1; }); });
 
   // Por origem
   const porOrigem={};
@@ -2455,15 +2624,18 @@ function renderDash() {
   const porResp={};
   ativos.forEach(o=>{ const k=o.responsavel||'?'; porResp[k]=(porResp[k]||0)+1; });
 
-  // Funil por etapa com SLA colorido
+  // Funil por etapa com SLA colorido (conta processos = opp×tipo)
   const etapaMap={};
   ativos.forEach(o=>{
-    const ets=getEtapasFor(o.tipo);
-    const e=ets.find(et=>et.id===o.etapaId);
-    if(!e) return;
-    const k=`${e.id}__${e.nome}`;
-    if(!etapaMap[k]) etapaMap[k]={nome:e.nome,ok:0,warn:0,danger:0};
-    etapaMap[k][getSlaStatus(o)]++;
+    (o.tipos||[o.tipo]).filter(Boolean).forEach(tipo=>{
+      const ets=getEtapasFor(tipo);
+      const etapaId=getOppEtapaId(o,tipo);
+      const e=ets.find(et=>et.id===etapaId);
+      if(!e) return;
+      const k=`${e.id}__${e.nome}`;
+      if(!etapaMap[k]) etapaMap[k]={nome:e.nome,ok:0,warn:0,danger:0};
+      etapaMap[k][getSlaStatus(o,tipo)]++;
+    });
   });
   const etapaEntries=Object.values(etapaMap).sort((a,b)=>(b.ok+b.warn+b.danger)-(a.ok+a.warn+a.danger));
   const maxEtapa=Math.max(...etapaEntries.map(e=>e.ok+e.warn+e.danger),1);
@@ -2471,24 +2643,34 @@ function renderDash() {
   // Tempo médio por etapa
   const tempoMap={};
   ativos.forEach(o=>{
-    const ets=getEtapasFor(o.tipo);
-    const e=ets.find(et=>et.id===o.etapaId);
-    if(!e||!o.etapaEntrada||!o.etapaEntrada[o.etapaId]) return;
-    const d=daysDiff(o.etapaEntrada[o.etapaId]);
-    if(!tempoMap[e.nome]) tempoMap[e.nome]={sum:0,cnt:0,sla:e.sla};
-    tempoMap[e.nome].sum+=d; tempoMap[e.nome].cnt++;
+    (o.tipos||[o.tipo]).filter(Boolean).forEach(tipo=>{
+      const ets=getEtapasFor(tipo);
+      const etapaId=getOppEtapaId(o,tipo);
+      const e=ets.find(et=>et.id===etapaId);
+      const entrada=getOppEtapaEntrada(o,tipo);
+      if(!e||!entrada[etapaId]) return;
+      const d=daysDiff(entrada[etapaId]);
+      if(!tempoMap[e.nome]) tempoMap[e.nome]={sum:0,cnt:0,sla:e.sla};
+      tempoMap[e.nome].sum+=d; tempoMap[e.nome].cnt++;
+    });
   });
   const tempoEntries=Object.entries(tempoMap).sort((a,b)=>{
     const avgA=Math.round(a[1].sum/a[1].cnt), avgB=Math.round(b[1].sum/b[1].cnt);
     return (avgB/b[1].sla)-(avgA/a[1].sla);
   });
 
-  // Trend últimos 30 dias
+  // Trend últimos 30 dias (1 entrada por cliente, não por tipo)
   const now30=Date.now(), diasMap={};
   for(let i=29;i>=0;i--){ diasMap[new Date(now30-i*86400000).toISOString().slice(0,10)]=0; }
-  opors.forEach(o=>(o.historico||[]).forEach(h=>{
-    if(h.tipo==='entrada'){ const k=(h.data||'').slice(0,10); if(k in diasMap) diasMap[k]++; }
-  }));
+  opors.forEach(o=>{
+    const allHist=[];
+    (o.tipos||[o.tipo]).filter(Boolean).forEach(t=>(getOppHistorico(o,t)||[]).forEach(h=>allHist.push(h)));
+    if(!(o.tipos||[]).length)(o.historico||[]).forEach(h=>allHist.push(h));
+    const seen=new Set();
+    allHist.forEach(h=>{
+      if(h.tipo==='entrada'){const k=(h.data||'').slice(0,10);if(k in diasMap&&!seen.has(k)){seen.add(k);diasMap[k]++;}}
+    });
+  });
   const trendVals=Object.values(diasMap), trendKeys=Object.keys(diasMap);
   const maxTrend=Math.max(...trendVals,1);
   const totalTrend=trendVals.reduce((s,v)=>s+v,0);
@@ -2897,23 +3079,26 @@ function toggleCardSubPanel(oppId) {
   renderPipeCards();
 }
 
-function checkSubEtapaCard(oppId, idx, checked, type) {
+function checkSubEtapaCard(oppId, idx, checked, type, tipo) {
   const opp = opors.find(o=>o.id===oppId); if(!opp) return;
-  const seKey = type==='aprv' ? 'subEtapasAprv' : type==='reun' ? 'subEtapasReun' : 'subEtapas';
+  const t = tipo || editingTipo || (opp.tipos||[])[0] || opp.tipo;
+  const typeKey = type==='aprv' ? 'aprv' : type==='reun' ? 'reun' : 'lev';
   const defArr = type==='aprv'
     ? (config.subEtapasAproveitamento||getDefaultSubEtapasAprv()).map((se,i)=>({idx:i,nome:se.nome,dias:se.dias,concluido:false,dataInicio:null,dataConcluido:null}))
     : type==='reun'
     ? (config.subEtapasReuniao||getDefaultSubEtapasReun()).map((se,i)=>({idx:i,nome:se.nome,dias:se.dias,opcional:!!se.opcional,concluido:false,pulada:false,dataInicio:null,dataConcluido:null}))
     : (config.subEtapasLevantamento||SUB_ETAPAS_LEVA).map((se,i)=>({idx:i,nome:se.nome,dias:se.dias,concluido:false,dataInicio:null,dataConcluido:null}));
-  if (!opp[seKey] || !opp[seKey].length) opp[seKey] = defArr;
-  const se = opp[seKey][idx]; if(!se) return;
+  const sub = getOppSubEtapas(opp, t);
+  if (!sub[typeKey] || !sub[typeKey].length) setOppSubField(opp, t, typeKey, defArr);
+  const seArr = getOppSubEtapas(opp, t)[typeKey];
+  const se = seArr[idx]; if(!se) return;
   se.concluido = checked;
   if (checked) {
     se.pulada = false;
     se.dataConcluido = new Date().toISOString();
     if (!se.dataInicio) se.dataInicio = new Date().toISOString();
-    if (idx+1 < opp[seKey].length && !opp[seKey][idx+1].dataInicio)
-      opp[seKey][idx+1].dataInicio = new Date().toISOString();
+    if (idx+1 < seArr.length && !seArr[idx+1].dataInicio)
+      seArr[idx+1].dataInicio = new Date().toISOString();
     addHistorico(opp, `Sub-etapa concluída: "${se.nome}"`, 'subetapa');
     sendWhatsAppNotif('subetapa', `✅ *BIDATX* — ${opp.cliente}: sub-etapa *${se.nome}* concluída`, {etapaNome: se.nome});
   } else {
@@ -2925,18 +3110,21 @@ function checkSubEtapaCard(oppId, idx, checked, type) {
   renderPipeCards();
 }
 
-function skipSubEtapa(oppId, idx, type) {
+function skipSubEtapa(oppId, idx, type, tipo) {
   const opp = opors.find(o=>o.id===oppId); if(!opp) return;
-  const seKey = type==='aprv' ? 'subEtapasAprv' : type==='reun' ? 'subEtapasReun' : 'subEtapas';
+  const t = tipo || editingTipo || (opp.tipos||[])[0] || opp.tipo;
+  const typeKey = type==='aprv' ? 'aprv' : type==='reun' ? 'reun' : 'lev';
   const defArr = type==='reun'
     ? (config.subEtapasReuniao||getDefaultSubEtapasReun()).map((se,i)=>({idx:i,nome:se.nome,dias:se.dias,opcional:!!se.opcional,concluido:false,pulada:false,dataInicio:null,dataConcluido:null}))
     : (config.subEtapasLevantamento||SUB_ETAPAS_LEVA).map((se,i)=>({idx:i,nome:se.nome,dias:se.dias,concluido:false,dataInicio:null,dataConcluido:null}));
-  if (!opp[seKey] || !opp[seKey].length) opp[seKey] = defArr;
-  const se = opp[seKey][idx]; if(!se||!se.opcional) return;
+  const sub = getOppSubEtapas(opp, t);
+  if (!sub[typeKey] || !sub[typeKey].length) setOppSubField(opp, t, typeKey, defArr);
+  const seArr = getOppSubEtapas(opp, t)[typeKey];
+  const se = seArr[idx]; if(!se||!se.opcional) return;
   se.pulada = true;
   se.concluido = false;
-  if (idx+1 < opp[seKey].length && !opp[seKey][idx+1].dataInicio)
-    opp[seKey][idx+1].dataInicio = new Date().toISOString();
+  if (idx+1 < seArr.length && !seArr[idx+1].dataInicio)
+    seArr[idx+1].dataInicio = new Date().toISOString();
   addHistorico(opp, `Sub-etapa pulada: "${se.nome}"`, 'subetapa');
   openSubPanels.add(oppId);
   saveOpors();
@@ -2960,8 +3148,10 @@ function renderSubEtapasTab() {
   if (!opp) return;
   const list = document.getElementById('subetapas-list');
   if (!list) return;
-  const etapasOpp = getEtapasFor(opp.tipo);
-  const thisEtapa = etapasOpp.find(e => e.id == opp.etapaId);
+  const tipo = editingTipo || (opp.tipos||[])[0] || opp.tipo;
+  const etapasOpp = getEtapasFor(tipo);
+  const etapaId = getOppEtapaId(opp, tipo);
+  const thisEtapa = etapasOpp.find(e => e.id == etapaId);
   const etapaName = thisEtapa ? thisEtapa.nome.toLowerCase() : '';
   const isLev  = etapaName.includes('levantamento');
   const isAprv = !isLev && (
@@ -2971,24 +3161,24 @@ function renderSubEtapasTab() {
   );
 
   if (!isLev && !isAprv) {
-    const etapaAtual = thisEtapa;
     list.innerHTML = `<div style="padding:24px;text-align:center;color:var(--text2)">
       <div style="font-size:32px;margin-bottom:12px">📋</div>
       <div style="font-size:14px;font-weight:600;color:var(--navy);margin-bottom:6px">Sub-etapas Operacionais</div>
-      <div style="font-size:13px">Este cliente está em <strong>${etapaAtual?etapaAtual.nome:'outra etapa'}</strong>.<br>
+      <div style="font-size:13px">Este cliente está em <strong>${thisEtapa?thisEtapa.nome:'outra etapa'}</strong>.<br>
       Sub-etapas disponíveis em <strong>Levantamento de Oportunidades</strong> e <strong>Compensação / Restituição / Extemporâneo</strong>.</div>
     </div>`;
     return;
   }
 
   const isLevMode = isLev;
-  const seKey   = isLevMode ? 'subEtapas' : 'subEtapasAprv';
-  const defList = isLevMode
+  const typeKey  = isLevMode ? 'lev' : 'aprv';
+  const defList  = isLevMode
     ? (config.subEtapasLevantamento||SUB_ETAPAS_LEVA)
     : (config.subEtapasAproveitamento||getDefaultSubEtapasAprv());
   const toggleFn = isLevMode ? 'toggleSubEtapa' : 'toggleSubEtapaAprv';
-  const ses = opp[seKey] && opp[seKey].length
-    ? opp[seKey]
+  const sub = getOppSubEtapas(opp, tipo);
+  const ses = (sub[typeKey] && sub[typeKey].length)
+    ? sub[typeKey]
     : defList.map((se,i)=>({idx:i,nome:se.nome,dias:se.dias,concluido:false,dataInicio:null,dataConcluido:null}));
 
   const sectionLabel = isLevMode ? 'Levantamento de Oportunidades' : 'Compensação / Restituição / Extemporâneo';
@@ -3025,15 +3215,18 @@ function renderSubEtapasTab() {
 
 function toggleSubEtapaAprv(oppId, idx, checked) {
   const opp = opors.find(o=>o.id===oppId); if(!opp) return;
+  const tipo = editingTipo || (opp.tipos||[])[0] || opp.tipo;
   const defArr = (config.subEtapasAproveitamento||getDefaultSubEtapasAprv()).map((se,i)=>({idx:i,nome:se.nome,dias:se.dias,concluido:false,dataInicio:null,dataConcluido:null}));
-  if (!opp.subEtapasAprv || !opp.subEtapasAprv.length) opp.subEtapasAprv = defArr;
-  const se = opp.subEtapasAprv[idx]; if(!se) return;
+  const sub = getOppSubEtapas(opp, tipo);
+  if (!sub.aprv || !sub.aprv.length) setOppSubField(opp, tipo, 'aprv', defArr);
+  const seArr = getOppSubEtapas(opp, tipo).aprv;
+  const se = seArr[idx]; if(!se) return;
   se.concluido = checked;
   if (checked) {
     se.dataConcluido = new Date().toISOString();
     if (!se.dataInicio) se.dataInicio = new Date().toISOString();
-    if (idx+1 < opp.subEtapasAprv.length && !opp.subEtapasAprv[idx+1].dataInicio)
-      opp.subEtapasAprv[idx+1].dataInicio = new Date().toISOString();
+    if (idx+1 < seArr.length && !seArr[idx+1].dataInicio)
+      seArr[idx+1].dataInicio = new Date().toISOString();
     addHistorico(opp, `Sub-etapa Aproveitamento concluída: "${se.nome}"`, 'subetapa');
   } else {
     se.dataConcluido = null;
@@ -3046,15 +3239,18 @@ function toggleSubEtapaAprv(oppId, idx, checked) {
 
 function toggleSubEtapa(oppId, idx, checked) {
   const opp = opors.find(o=>o.id===oppId); if(!opp) return;
-  if (!opp.subEtapas || !opp.subEtapas.length) opp.subEtapas = SUB_ETAPAS_LEVA.map((se,i)=>({idx:i,nome:se.nome,dias:se.dias,concluido:false,dataInicio:null,dataConcluido:null}));
-  const se = opp.subEtapas[idx]; if(!se) return;
+  const tipo = editingTipo || (opp.tipos||[])[0] || opp.tipo;
+  const defArr = (config.subEtapasLevantamento||SUB_ETAPAS_LEVA).map((se,i)=>({idx:i,nome:se.nome,dias:se.dias,concluido:false,dataInicio:null,dataConcluido:null}));
+  const sub = getOppSubEtapas(opp, tipo);
+  if (!sub.lev || !sub.lev.length) setOppSubField(opp, tipo, 'lev', defArr);
+  const seArr = getOppSubEtapas(opp, tipo).lev;
+  const se = seArr[idx]; if(!se) return;
   se.concluido = checked;
   if (checked) {
     se.dataConcluido = new Date().toISOString();
     if (!se.dataInicio) se.dataInicio = new Date().toISOString();
-    if (idx+1 < opp.subEtapas.length && !opp.subEtapas[idx+1].dataInicio) {
-      opp.subEtapas[idx+1].dataInicio = new Date().toISOString();
-    }
+    if (idx+1 < seArr.length && !seArr[idx+1].dataInicio)
+      seArr[idx+1].dataInicio = new Date().toISOString();
     addHistorico(opp, `Sub-etapa concluída: "${se.nome}"`, 'subetapa');
   } else {
     se.dataConcluido = null;
@@ -3078,7 +3274,8 @@ function declineOpp() {
   const opp = opors.find(o=>o.id===editingOppId); if(!opp) return;
   const motivo = prompt(`Motivo para inativar "${opp.cliente}":`);
   if (motivo === null) return;
-  const etapa = getEtapa(opp.etapaId, opp.tipo);
+  const primaryTipo = (opp.tipos||[])[0] || opp.tipo;
+  const etapa = getEtapa(getOppEtapaId(opp, primaryTipo), primaryTipo);
   const etapaNome = etapa ? etapa.nome : '';
   opp.status = 'inativo';
   opp.statusMotivo = motivo||'Não informado';
@@ -3110,10 +3307,13 @@ function renderInativos() {
     <th>Cliente / CNPJ</th><th>Tipo</th><th>Última Etapa</th><th>Motivo</th><th>Data</th><th></th>
   </tr></thead><tbody>`;
   inativos.forEach(opp => {
-    const etapa = getEtapa(opp.etapaId, opp.tipo);
+    const tipos=(opp.tipos||[opp.tipo]).filter(Boolean);
+    const pt=tipos[0];
+    const etapa = getEtapa(getOppEtapaId(opp,pt),pt);
+    const tiposBadges=tipos.map(t=>`<span class="badge ${TIPO_BADGE[t]||''}">${t}</span>`).join(' ');
     html += `<tr>
       <td><strong>${opp.cliente}</strong><br><small style="color:var(--text2)">${opp.cnpj||'—'}</small></td>
-      <td><span class="badge ${TIPO_BADGE[opp.tipo]||''}">${opp.tipo}</span></td>
+      <td style="white-space:nowrap">${tiposBadges}</td>
       <td style="font-size:12px;max-width:140px">${etapa?etapa.nome:'—'}</td>
       <td style="font-size:12px;color:var(--text2);max-width:180px">${opp.statusMotivo||'—'}</td>
       <td style="font-size:12px;color:var(--text2)">${opp.dataInativacao?fmtDateShort(opp.dataInativacao):'—'}</td>
