@@ -712,10 +712,10 @@ tr:hover td{background:var(--bg)}
         <div class="mf-row">
           <div class="mf-group" style="flex:1 1 100%"><label>Tipo de Processo *</label>
             <div class="tipo-check-group" id="tipo-check-group">
-              <label class="tipo-check-item" data-tipo="Fiscal" onclick="toggleTipoCheck(this)"><input type="checkbox" value="Fiscal"> Fiscal</label>
-              <label class="tipo-check-item" data-tipo="Previdenciário" onclick="toggleTipoCheck(this)"><input type="checkbox" value="Previdenciário"> Previdenciário</label>
-              <label class="tipo-check-item" data-tipo="Consultoria" onclick="toggleTipoCheck(this)"><input type="checkbox" value="Consultoria"> Consultoria</label>
-              <label class="tipo-check-item" data-tipo="Transação Tributária" onclick="toggleTipoCheck(this)"><input type="checkbox" value="Transação Tributária"> Transação Tributária</label>
+              <label class="tipo-check-item" data-tipo="Fiscal" onclick="toggleTipoCheck(this,event)"><input type="checkbox" value="Fiscal"> Fiscal</label>
+              <label class="tipo-check-item" data-tipo="Previdenciário" onclick="toggleTipoCheck(this,event)"><input type="checkbox" value="Previdenciário"> Previdenciário</label>
+              <label class="tipo-check-item" data-tipo="Consultoria" onclick="toggleTipoCheck(this,event)"><input type="checkbox" value="Consultoria"> Consultoria</label>
+              <label class="tipo-check-item" data-tipo="Transação Tributária" onclick="toggleTipoCheck(this,event)"><input type="checkbox" value="Transação Tributária"> Transação Tributária</label>
             </div>
             <div class="field-error" id="err-tipo"></div>
           </div>
@@ -1787,10 +1787,11 @@ function switchTipo(tipo) {
   if (idx >= 0 && tabs[idx]) showInnerTab(tabs[idx]);
 }
 
-function toggleTipoCheck(label) {
+function toggleTipoCheck(label, event) {
+  event.preventDefault();
   label.classList.toggle('checked');
   const inp = label.querySelector('input');
-  inp.checked = !inp.checked;
+  inp.checked = label.classList.contains('checked');
 }
 
 function getSelectedTipos() {
