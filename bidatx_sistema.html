@@ -1090,6 +1090,7 @@ let editingOppId  = null;
 let editingTipo   = null;
 let dragCardTipo  = null;
 let fuDias        = 7;
+let dashFin       = { mes: new Date().getMonth()+1, ano: new Date().getFullYear() };
 
 // ── per-tipo accessors ────────────────────────────────────────
 function getOppEtapaId(opp,tipo){return (opp.etapasPorTipo||{})[tipo]||null;}
@@ -1367,7 +1368,7 @@ function showApp() {
   document.getElementById('header-perfil').textContent = '(' + (currentUser.perfil==='Socio'?'Sócio':currentUser.perfil) + ')';
   if (currentUser.perfil === 'Socio') document.getElementById('nav-config').style.display = 'inline-flex';
   updateInativosCount();
-  showTab('clientes');
+  showTab('dash');
 }
 
 // ============================================================
@@ -2953,6 +2954,133 @@ function renderDash() {
       <svg viewBox="0 0 ${svgW} 60" style="width:100%;height:68px;display:block">${trendBars}</svg>
       <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text2);margin-top:2px">
         <span>${trendKeys[0].slice(5)}</span><span>${trendKeys[14].slice(5)}</span><span>${trendKeys[29].slice(5)}</span>
+      </div>
+    </div>
+    <div id="dash-fin-body"></div>`;
+  renderDashFin();
+}
+
+function renderDashFin() {
+  const fin = document.getElementById('dash-fin-body');
+  if (!fin) return;
+
+  const meses = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const anos  = [2024,2025,2026,2027];
+  const tipoColors = {'Previdenciário':'#1a56db','Fiscal':'#1a7a4a','Consultoria':'#7c3aed','Transação Tributária':'#b91c1c'};
+
+  // Todas as compensações
+  const allComps = [];
+  opors.forEach(o => (o.compensacoes||[]).forEach(c => allComps.push({...c, opp:o})));
+
+  // Receita filtrada (pago: true)
+  const recComps = allComps.filter(c => {
+    if (!c.pago) return false;
+    const dp = c.dataPagamento || c.data;
+    if (!dp) return !dashFin.mes && !dashFin.ano;
+    const d = new Date(dp);
+    if (dashFin.ano && d.getFullYear() !== dashFin.ano) return false;
+    if (dashFin.mes && (d.getMonth()+1) !== dashFin.mes)  return false;
+    return true;
+  });
+
+  // A receber (pago: false) — sem filtro de data
+  const aRecComps = allComps.filter(c => !c.pago);
+
+  const getLiq = c => (c.totalBruto||0) * (1 - (c.impostoPct||0)/100);
+
+  const recBruto  = recComps.reduce((s,c) => s+(c.totalBruto||0), 0);
+  const recLiq    = recComps.reduce((s,c) => s+getLiq(c), 0);
+  const arecBruto = aRecComps.reduce((s,c) => s+(c.totalBruto||0), 0);
+  const arecLiq   = aRecComps.reduce((s,c) => s+getLiq(c), 0);
+
+  // Compensando vs Compensado (por opp)
+  const oppMap = new Map();
+  allComps.forEach(c => {
+    const id = c.opp.id;
+    if (!oppMap.has(id)) oppMap.set(id, {aberto:false,fechado:false});
+    const e = oppMap.get(id);
+    if (!c.pago) e.aberto = true; else e.fechado = true;
+  });
+  let compensando = 0, compensado = 0;
+  oppMap.forEach(v => { if (v.aberto) compensando++; else if (v.fechado) compensado++; });
+
+  // Receita por tipo (usando tipos do opp da compensação)
+  const porTipo = {};
+  recComps.forEach(c => {
+    (c.opp.tipos||[c.opp.tipo]).filter(Boolean).forEach(t => {
+      porTipo[t] = (porTipo[t]||0) + (c.totalBruto||0);
+    });
+  });
+  const maxTipo = Math.max(...Object.values(porTipo), 1);
+
+  // Split por parceiro
+  const splitBidatx = recComps.reduce((s,c) => s+(c.valorBidatx||0), 0);
+  const splitGblcom  = recComps.reduce((s,c) => s+(c.valorGblcom ||0), 0);
+  const splitCanal   = recComps.reduce((s,c) => s+(c.valorCanal  ||0), 0);
+  const maxSplit = Math.max(splitBidatx, splitGblcom, splitCanal, 1);
+
+  const filtroLabel = (dashFin.mes ? meses[dashFin.mes] : 'Todos os meses') + ' · ' + (dashFin.ano || 'Todos os anos');
+
+  fin.innerHTML = `
+    <div style="border-top:2px solid var(--border);margin-top:28px;padding-top:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <h2 style="font-size:16px;font-weight:800;color:var(--navy);margin:0">Financeiro</h2>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <select onchange="dashFin.mes=+this.value;renderDashFin()" style="padding:5px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-weight:600;background:var(--white);color:var(--navy);cursor:pointer">
+            <option value="0" ${dashFin.mes===0?'selected':''}>Todos os meses</option>
+            ${meses.slice(1).map((m,i)=>`<option value="${i+1}" ${dashFin.mes===i+1?'selected':''}>${m}</option>`).join('')}
+          </select>
+          <select onchange="dashFin.ano=+this.value;renderDashFin()" style="padding:5px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-weight:600;background:var(--white);color:var(--navy);cursor:pointer">
+            <option value="0" ${dashFin.ano===0?'selected':''}>Todos os anos</option>
+            ${anos.map(a=>`<option value="${a}" ${dashFin.ano===a?'selected':''}>${a}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+
+      <div class="dash-kpi-row">
+        <div class="dash-kpi c-green">
+          <div class="dash-kpi-label">Receita do Período</div>
+          <div class="dash-kpi-val" style="font-size:18px">${fmtBRL(recBruto)}</div>
+          <div class="dash-kpi-sub">Líquido: ${fmtBRL(recLiq)}</div>
+        </div>
+        <div class="dash-kpi c-amber">
+          <div class="dash-kpi-label">A Receber</div>
+          <div class="dash-kpi-val" style="font-size:18px">${fmtBRL(arecBruto)}</div>
+          <div class="dash-kpi-sub">Líquido: ${fmtBRL(arecLiq)}</div>
+        </div>
+        <div class="dash-kpi c-accent">
+          <div class="dash-kpi-label">Compensando</div>
+          <div class="dash-kpi-val">${compensando}</div>
+          <div class="dash-kpi-sub">clientes em andamento</div>
+        </div>
+        <div class="dash-kpi" style="border-left-color:var(--text2)">
+          <div class="dash-kpi-label">Compensado</div>
+          <div class="dash-kpi-val">${compensado}</div>
+          <div class="dash-kpi-sub">clientes concluídos</div>
+        </div>
+      </div>
+
+      <div class="dash-row">
+        <div class="dash-card">
+          <div class="dash-card-title">Receita por Tipo <span style="font-size:11px;font-weight:400;color:var(--text2)">${filtroLabel}</span></div>
+          ${Object.keys(porTipo).length
+            ? Object.entries(porTipo).sort((a,b)=>b[1]-a[1]).map(([t,v])=>`
+                <div class="dash-bar-row">
+                  <div class="dash-bar-label" title="${t}">${t}</div>
+                  <div class="dash-bar-track"><div class="dash-bar-fill" style="width:${Math.round(v/maxTipo*100)}%;background:${tipoColors[t]||'var(--accent)'}"></div></div>
+                  <div class="dash-bar-count" style="font-size:11px">${fmtBRL(v)}</div>
+                </div>`).join('')
+            : '<p style="color:var(--text2);font-size:13px;margin:8px 0">Sem receitas no período.</p>'}
+        </div>
+        <div class="dash-card">
+          <div class="dash-card-title">Split por Parceiro <span style="font-size:11px;font-weight:400;color:var(--text2)">${filtroLabel}</span></div>
+          ${[['BIDATX',splitBidatx,'var(--navy)'],['GBLcom',splitGblcom,'var(--accent)'],['Canal',splitCanal,'#7c3aed']].map(([nome,val,cor])=>`
+            <div class="dash-bar-row">
+              <div class="dash-bar-label">${nome}</div>
+              <div class="dash-bar-track"><div class="dash-bar-fill" style="width:${Math.round(val/maxSplit*100)}%;background:${cor}"></div></div>
+              <div class="dash-bar-count" style="font-size:11px">${fmtBRL(val)}</div>
+            </div>`).join('')}
+        </div>
       </div>
     </div>`;
 }
