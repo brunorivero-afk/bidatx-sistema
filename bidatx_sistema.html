@@ -1712,6 +1712,24 @@ function setupPipeSwipe() {
       navigatePipeStage(dx < 0 ? 1 : -1);
     }
   }, { passive: true });
+
+  // Mouse (notebook/desktop): arrastar com o botao esquerdo no fundo do painel
+  // navega de etapa. Se o arraste comecar em cima de um card, ignora --
+  // esse gesto pertence ao drag existente que move o cliente de etapa (setupDrag).
+  let mStartX = 0, mStartY = 0, mDown = false;
+  el.addEventListener('mousedown', (e) => {
+    if (e.button !== 0 || e.target.closest('.opp-card')) return;
+    mDown = true; mStartX = e.clientX; mStartY = e.clientY;
+  });
+  window.addEventListener('mouseup', (e) => {
+    if (!mDown) return;
+    mDown = false;
+    const dx = e.clientX - mStartX;
+    const dy = e.clientY - mStartY;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      navigatePipeStage(dx < 0 ? 1 : -1);
+    }
+  });
 }
 
 function renderPipeline() {
@@ -1914,7 +1932,13 @@ function setupDrag(card, oppId, tipo) {
       if (moved) {
         const el=document.elementFromPoint(ev.clientX,ev.clientY);
         const pn=el&&el.closest('.pipe-node');
-        if (pn) moveOppToEtapa(dragCardOppId, parseInt(pn.dataset.etapaId), dragCardTipo);
+        if (pn) {
+          moveOppToEtapa(dragCardOppId, parseInt(pn.dataset.etapaId), dragCardTipo);
+        } else {
+          // arraste lateral que nao soltou sobre uma etapa: so navega a visualizacao
+          const dx=ev.clientX-startX, dy=ev.clientY-startY;
+          if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)*1.5) navigatePipeStage(dx<0?1:-1);
+        }
         setTimeout(()=>{ dragging=false; },50);
       } else { dragging=false; }
       dragCardOppId=null; dragCardTipo=null;
